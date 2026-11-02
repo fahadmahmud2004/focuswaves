@@ -5,14 +5,12 @@
 A living sea for deep focus: mix calm nature sounds, run focus sessions, and listen to the Quran with soft sounds behind the recitation. English and Bangla.
 It is a static site: no server, no database, no build step. It runs on the Cloudflare Pages free tier.
 
-## Deploy (Cloudflare Pages, free)
-1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** → **Upload assets**
-2. Project name: `focuswaves` → drag this whole folder in → **Deploy**
-3. Project → **Custom domains** → **Set up a custom domain** → `focus.freakingwaves.com`
-   - If freakingwaves.com DNS is on Cloudflare, the record is added automatically.
-   - Otherwise add a CNAME at your DNS provider: `focus` → `focuswaves.pages.dev`
-
-To update later, upload the folder again (or connect a GitHub repo for auto-deploy).
+## Deploy
+Hosted on **Cloudflare Workers (static assets only)**, connected to this GitHub repo.
+Every push to `main` deploys automatically (Workers Builds runs `npx wrangler deploy`).
+- `wrangler.jsonc` serves the repo root as static files; `.assetsignore` keeps repo-only files off the site.
+- No Worker script runs, so it stays free and unlimited and uses none of the daily Worker request quota.
+- Custom domain `focus.freakingwaves.com`: Worker → Settings → Domains & Routes.
 
 ## Files
 | File | What it is |

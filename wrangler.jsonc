@@ -1,0 +1,11 @@
+// Cloudflare Workers static site. No Worker script: every file is served as a
+// static asset, which is free and unlimited and never counts against the
+// 100k requests/day Worker quota. Deploy = git push (Workers Builds runs `npx wrangler deploy`).
+{
+  "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
+  "name": "focuswaves",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./"
+  }
+}
