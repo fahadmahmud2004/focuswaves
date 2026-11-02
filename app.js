@@ -332,15 +332,15 @@
   function swReset() { if (SW.running) swPause(); SW.acc = 0; SW.logged = 0; store.set("swAcc", 0); paint(); }
   setInterval(() => { if (CM !== "timer") paint(); }, 250);
 
-  const FACES = [["bold"], ["serif", "Instrument+Serif"], ["thin", "Inter:wght@200"], ["mono", "JetBrains+Mono:wght@300"], ["round", "Fredoka:wght@500"], ["outline"], ["bangla", "Tiro+Bangla"], ["dot", "Doto:wght@700"]];
-  let face = store.get("face", "bold");
+  const FACES = [["bold"], ["tide"], ["glass"], ["clear"], ["mirror"], ["tall"], ["wide"]];
+  let face = store.get("face", "bold"); if (!FACES.some(f => f[0] === face)) face = "bold";
   const loaded = new Set();
   const loadFont = f => { if (!f || loaded.has(f)) return; loaded.add(f); const l = document.createElement("link"); l.rel = "stylesheet"; l.href = `https://fonts.googleapis.com/css2?family=${f}&display=swap`; document.head.appendChild(l); };
   function buildFaces() {
     const box = $("#faces"); box.innerHTML = "";
     FACES.forEach(([id, font]) => {
       const b = document.createElement("button"); b.dataset.face = id; b.setAttribute("aria-pressed", id === face);
-      b.innerHTML = `<b>${id === "bangla" ? "১২:৩০" : "12:30"}</b><small></small>`; b.querySelector("small").textContent = t("faceNames")[id];
+      b.innerHTML = `<b>25:00</b><small></small>`; b.querySelector("small").textContent = t("faceNames")[id];
       b.onclick = () => { face = id; store.set("face", id); loadFont(font); clock.dataset.face = id; buildFaces(); paint(); };
       box.appendChild(b);
     });
@@ -519,7 +519,7 @@
 
   /* ---- intro: wordmark letters, a greeting for the hour, and a choice of where to start ---- */
   { const w = $(".intro-word .w"); let i = 0;
-    [["Focus", ""], [" ", "sp"], ["Waves", "red"]].forEach(([txt, cls]) => {
+    [["Focus", ""], [" ", "sp"], ["Waves", "acc"]].forEach(([txt, cls]) => {
       if (cls === "sp") { const s = document.createElement("span"); s.className = "sp"; w.appendChild(s); return; }
       [...txt].forEach(ch => { const s = document.createElement("span"); s.className = "ch" + (cls ? " " + cls : ""); s.textContent = ch; s.style.setProperty("--i", i++); w.appendChild(s); });
     });
