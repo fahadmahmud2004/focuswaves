@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FocusWaves</title>
+<meta name="description" content="FocusWaves by Freaking Waves: পড়াশোনা আর মনোযোগের জন্য প্রকৃতির শব্দ, ফোকাস টাইমার আর কুরআন তিলাওয়াত। একদম ফ্রি।">
+<meta property="og:title" content="FocusWaves · by Freaking Waves">
+<meta property="og:description" content="Calm nature sounds, focus sessions and Quran recitation for study. Free, no sign-up.">
+<meta property="og:image" content="https://focus.freakingwaves.com/brand/icon-512.png">
+<meta name="theme-color" content="#1e1917">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="brand/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FocusWaves">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Hind+Siliguri:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="brand" href="https://freakingwaves.com" aria-label="FocusWaves by Freaking Waves">
+    <img src="brand/fw-mark.png" alt="" width="34" height="27">
+    <span class="brand-text"><b>Focus<i>Waves</i></b><small data-t="by">by Freaking Waves</small></span>
+  </a>
+  <div class="stats" id="stats" title="Focus time today · day streak"></div>
+  <button class="pill" id="quranOpen" aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5z"/><path d="M12 6v13.5"/></svg>
+    <span data-t="quran">Quran</span>
+  </button>
+  <button class="pill lang" id="langBtn" data-t="langBtn">EN</button>
+</header>
+
+<main class="focus">
+  <input id="intent" class="intent" type="text" maxlength="60" data-t-ph="intent" data-t-aria="intent" placeholder="What are you focusing on?" aria-label="What are you focusing on?" autocomplete="off">
+  <div class="mode" id="modeLabel">Focus</div>
+  <div class="clock" id="clock" role="timer" aria-live="off">25:00</div>
+  <div class="ring" aria-hidden="true"><div id="ringFill"></div></div>
+  <div class="lengths" id="lengths" role="radiogroup" aria-label="Focus length">
+    <button role="radio" data-min="25" aria-checked="true">25</button>
+    <button role="radio" data-min="50" aria-checked="false">50</button>
+    <button role="radio" data-min="90" aria-checked="false">90</button>
+    <span data-t="min">min</span>
+  </div>
+  <div class="actions">
+    <button id="focusBtn" class="primary">Start focus</button>
+    <button id="resetBtn" class="ghost" data-t="reset" hidden>Reset</button>
+  </div>
+</main>
+
+<!-- ============ DOCK ============ -->
+<section class="dock" aria-label="Sounds">
+  <div class="dock-head">
+    <button id="playBtn" class="play" aria-label="Play sounds">
+      <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+    </button>
+    <div class="dock-title">
+      <strong id="mixName">Sounds</strong>
+      <span id="mixSub">Tap a sound to begin</span>
+    </div>
+    <label class="master">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg>
+      <input id="masterVol" type="range" min="0" max="1" step="0.01" value="0.8" data-t-aria="master" aria-label="Master volume">
+    </label>
+    <button class="pill" id="mixesBtn" aria-expanded="false" aria-controls="mixes" data-t="mixes">Mixes</button>
+  </div>
+  <div class="mixes" id="mixes" hidden>
+    <div id="presetList" class="chips"></div>
+    <form id="saveForm" class="save">
+      <input id="presetName" type="text" maxlength="30" data-t-ph="mixName" data-t-aria="mixName" placeholder="Name this mix" aria-label="Mix name">
+      <button type="submit" data-t="save">Save</button>
+    </form>
+  </div>
+  <div class="sounds" id="grid"></div>
+  <div class="qmini" id="qmini" hidden>
+    <span class="qmini-dot"></span>
+    <button class="qmini-title" id="qminiTitle">Quran</button>
+    <button class="qmini-btn" id="qminiToggle" aria-label="Pause recitation">
+      <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+    </button>
+  </div>
+</section>
+
+<!-- ============ QURAN SHEET ============ -->
+<div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+<aside class="sheet" id="quranSheet" role="dialog" aria-modal="true" aria-labelledby="qTitle" hidden>
+  <div class="sheet-head">
+    <h2 id="qTitle" data-t="quran">Quran</h2>
+    <button class="icon-btn" id="quranClose" data-t-aria="close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <p class="bismillah" lang="ar" dir="rtl">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</p>
+  <div class="q-row">
+    <label><span data-t="surah">Surah</span> <select id="surahSel"></select></label>
+    <label><span data-t="reciter">Reciter</span> <select id="reciterSel"></select></label>
+  </div>
+  <div class="q-player">
+    <button id="qPrev" class="icon-btn" aria-label="Previous surah"><svg viewBox="0 0 24 24" class="fill"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+    <button id="qPlay" class="play big" aria-label="Play recitation">
+      <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+    </button>
+    <button id="qNext" class="icon-btn" aria-label="Next surah"><svg viewBox="0 0 24 24" class="fill"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg></button>
+  </div>
+  <div class="q-progress">
+    <span id="qCur">0:00</span>
+    <input id="qSeek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Seek" style="--p:0%">
+    <span id="qDur">0:00</span>
+  </div>
+  <p id="qStatus" class="q-status" role="status"></p>
+
+  <div class="q-section">
+    <label class="switch"><input type="checkbox" id="qUnder" checked><span></span> <em data-t="under">Nature sounds behind recitation</em></label>
+    <label class="q-under-lvl" id="qUnderLvlWrap">
+      <span data-t="underLvl">Background level</span>
+      <input id="qUnderLvl" type="range" min="0.05" max="0.8" step="0.01" value="0.3" aria-label="Background level during recitation">
+    </label>
+    <p class="hint" data-t="underHint"></p>
+  </div>
+  <div class="q-section q-opts">
+    <label class="switch"><input type="checkbox" id="qAuto" checked><span></span> <em data-t="auto">Continue to next surah</em></label>
+    <label class="switch"><input type="checkbox" id="qRepeat"><span></span> <em data-t="repeat">Repeat this surah</em></label>
+  </div>
+  <audio id="qAudio" preload="none"></audio>
+</aside>
+
+<script src="i18n.js"></script>
+<script src="sounds.js"></script>
+<script src="quran.js"></script>
+<script src="scene.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
