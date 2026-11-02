@@ -263,6 +263,7 @@ body.depth .date-line { font-size: clamp(17px, 2.2vw, 22px); }
 body.depth .date-line span:first-child { font-weight: 600; }
 body.depth .focus-in::after { content: ""; flex: 1; order: 0; }
 body.depth .clock + .date-line { order: -1; }
+body.depth .progress, body.depth .dots, body.depth .actions, body.depth .intent, body.depth .mode, body.depth .date-line { position: relative; z-index: 2; }
 body.depth .progress { order: 1; } body.depth .dots { order: 2; } body.depth .actions { order: 3; margin-top: 8px; }
 .faces .dpv { position: relative; font-variation-settings: "wdth" 62; font-weight: 560; letter-spacing: 0;
   background: linear-gradient(180deg, #fff, rgba(255,240,225,.55)); -webkit-background-clip: text; background-clip: text; color: transparent; overflow: hidden; }

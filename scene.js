@@ -375,7 +375,7 @@ const Scene = (() => {
     const bottom = horizon + seaH * (narrow ? 0.3 : 0.34) + y, room = bottom - H * (narrow ? 0.17 : 0.2);
     g.font = `ultra-condensed 560 100px Archivo, "Arial Narrow", sans-serif`;
     const per100 = Math.max(...lines.map(l => g.measureText(l).width)) / 100;
-    let fs = Math.min(room / (0.8 * lines.length), (W * (narrow ? 0.86 : 0.8)) / per100) * s;
+    let fs = Math.min(room / (0.8 * lines.length), (W * (narrow ? 0.86 : 0.8)) / per100) * s * (narrow ? 0.82 : 0.66);   // a calmer default size
     const sky = mix(P.top, GREY, overcast * 0.4), hor = mix(P.hor, GREY, overcast * 0.4), lift = 0.25 * night;
     const sp = clockSprite(lines, fs, [mix(sky, [255, 255, 255], 0.9), mix(hor, [255, 255, 255], 0.66 + lift), mix(hor, [255, 255, 255], 0.42 + lift)]);
     const dx = W / 2 + x - sp.w / 2, dy = bottom - sp.h + sp.pad + fs * 0.07;
