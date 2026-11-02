@@ -25,6 +25,13 @@ const STR = {
     play: "Play sounds", pauseSounds: "Pause sounds", close: "Close", master: "Master volume", fullscreen: "Full screen",
     playQ: "Play recitation", prevS: "Previous surah", nextS: "Next surah", seek: "Seek",
     noAudio: "Your browser can't run the sound engine. Try the latest Chrome, Safari or Firefox.",
+    close: "Close", room: "Room", far: "Far", space: "How close the sounds feel", clear: "Turn everything off",
+    saveMix: "Save current mix", share: "Copy link", all: "All", nature: "Nature", music: "Music", focusCat: "Focus", yours: "Yours",
+    timer: "Timer", focusLen: "Focus", shortLen: "Short break", longLen: "Long break", custom: "Custom minutes",
+    autoBreak: "Start breaks automatically", cycleHint: "Every 4th break is a long one.",
+    qVol: "Recitation volume", qNature: "Nature sounds while reciting", qSoft: "Soft and distant",
+    qSoftHint: "Like hearing it from the mosque across the field.", qSoftNA: "This reciter's audio can't be softened here. Volume still works.",
+    hide: "Hide", showHint: "Tap anywhere to bring the controls back", controls: "Controls", mix: "Mix",
   },
   bn: {
     title: "FocusWaves", langBtn: "EN",
@@ -51,6 +58,13 @@ const STR = {
     play: "সাউন্ড চালাও", pauseSounds: "সাউন্ড থামাও", close: "বন্ধ করো", master: "মূল ভলিউম", fullscreen: "ফুল স্ক্রিন",
     playQ: "তিলাওয়াত চালাও", prevS: "আগের সূরা", nextS: "পরের সূরা", seek: "সামনে-পেছনে",
     noAudio: "তোমার ব্রাউজারে সাউন্ড চলছে না। Chrome, Safari বা Firefox-এর নতুন ভার্সন দিয়ে চেষ্টা করো।",
+    close: "কাছে", room: "ঘরে", far: "দূরে", space: "শব্দ কত কাছে মনে হবে", clear: "সব বন্ধ করো",
+    saveMix: "এই মিক্স সেভ করো", share: "লিংক কপি করো", all: "সব", nature: "প্রকৃতি", music: "মিউজিক", focusCat: "ফোকাস", yours: "তোমার",
+    timer: "টাইমার", focusLen: "ফোকাস", shortLen: "ছোট বিরতি", longLen: "লম্বা বিরতি", custom: "নিজের মতো মিনিট",
+    autoBreak: "বিরতি নিজে থেকে শুরু হবে", cycleHint: "প্রতি ৪ নম্বর বিরতিটা লম্বা।",
+    qVol: "তিলাওয়াতের ভলিউম", qNature: "তিলাওয়াতের সময় প্রকৃতির শব্দ", qSoft: "নরম, দূর থেকে আসা",
+    qSoftHint: "যেন মাঠের ওপারের মসজিদ থেকে ভেসে আসছে।", qSoftNA: "এই ক্বারীর অডিও এখানে নরম করা যাচ্ছে না। ভলিউম কাজ করবে।",
+    hide: "লুকাও", showHint: "কন্ট্রোল ফিরিয়ে আনতে যেকোনো জায়গায় ট্যাপ করো", controls: "কন্ট্রোল", mix: "মিক্স",
   },
 };
 let LANG = (() => { try { return localStorage.getItem("fw:lang") || "en"; } catch { return "en"; } })();

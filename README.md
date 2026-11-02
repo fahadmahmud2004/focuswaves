@@ -26,9 +26,21 @@ Every push to `main` deploys automatically (Workers Builds runs `npx wrangler de
 | `sw.js`, `manifest.webmanifest` | Installable app / offline support |
 
 ## Sounds
-Rain, tin roof, thunder, waves, wind, birds (koel, spotted dove, songbirds), stream, fireplace, crickets, frogs, fan, white / pink / brown noise.
-Each one is a small simulation with random events and slowly drifting character, not a recording.
-To change how a mix sounds, edit `MIXES` in `sounds.js`; values are 0 to 1.
+- **Nature:** waves, wind, birds (koel, spotted dove, songbirds), stream, fireplace
+- **Rain & storm:** rain, tin roof, thunder
+- **Night:** crickets, frogs
+- **Music:** lofi beats, soft piano, ambient pad. All three follow one shared chord progression, so any combination stays in tune.
+- **Focus noise:** fan, white, pink, brown
+
+Each one is a small simulation with random events and slowly drifting character, not a recording, so nothing loops.
+"Close / Room / Far" in the Sounds panel changes how near the sounds feel (filter + reverb).
+To change the curated mixes, edit `MIXES` in `sounds.js` (values 0 to 1; `cat` is nature, music or focus; `art` is the card colours).
+
+## Quran
+The recitation has its own volume, a "soft and distant" mode, and a slider for how loud the nature sounds stay while it plays.
+Volume and soft mode go through Web Audio when the audio host sends CORS headers; otherwise the player falls back to a plain
+`<audio>` element (volume still works, except on iPhone where the hardware buttons control it).
+If you later host the files on R2, add a CORS rule allowing `https://focus.freakingwaves.com` so soft mode works.
 
 ## Share links
 "Copy link to this mix" gives a link like `focus.freakingwaves.com/#mix=rain-60.waves-30`. Opening it loads that mix.

@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FocusWaves</title>
-<meta name="description" content="FocusWaves by Freaking Waves. Live nature sounds that never loop, a focus timer, and Quran recitation. Free, no sign-up.">
+<meta name="description" content="FocusWaves by Freaking Waves. Live nature sounds and lofi that never loop, a focus timer, and Quran recitation. Free, no sign-up.">
 <meta property="og:title" content="FocusWaves · by Freaking Waves">
-<meta property="og:description" content="Sit by the sea. Get your work done. Live nature sounds, focus sessions and Quran recitation. Free.">
+<meta property="og:description" content="Sit by the sea. Get your work done. Live nature sounds, lofi, focus sessions and Quran recitation. Free.">
 <meta property="og:image" content="https://focus.freakingwaves.com/brand/icon-512.png">
 <meta name="theme-color" content="#0b1520">
 <link rel="manifest" href="manifest.webmanifest">
@@ -39,122 +39,117 @@
 
 <header class="top">
   <a class="brand" href="https://freakingwaves.com" aria-label="FocusWaves by Freaking Waves">
-    <img src="brand/fw-mark.png" alt="" width="34" height="27">
+    <img src="brand/fw-mark.png" alt="" width="30" height="24">
     <span class="brand-text"><b>Focus<i>Waves</i></b><small>by Freaking Waves</small></span>
   </a>
-  <div class="stats" id="stats"></div>
-  <nav class="tools">
-    <button class="pill" id="quranOpen" aria-haspopup="dialog">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5z"/><path d="M12 6v13.5"/></svg>
-      <span data-t="quran">Quran</span>
-    </button>
-    <button class="icon-btn ghosty" id="fsBtn" data-t-aria="fullscreen" aria-label="Full screen">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
-    </button>
-    <button class="pill lang" id="langBtn" data-t="langBtn">বাং</button>
-  </nav>
+  <div class="top-right">
+    <div class="stats" id="stats"></div>
+    <button class="chip-btn" id="langBtn" data-t="langBtn">বাং</button>
+    <button class="round" id="fsBtn" data-t-aria="fullscreen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </div>
 </header>
 
 <main class="focus" id="focus">
-  <input id="intent" class="intent" type="text" maxlength="60" data-t-ph="intent" data-t-aria="intent" placeholder="What are you working on?" autocomplete="off">
+  <input id="intent" class="intent" type="text" maxlength="60" data-t-ph="intent" data-t-aria="intent" autocomplete="off">
   <div class="mode" id="modeLabel">Focus</div>
   <div class="clock" id="clock" role="timer">25:00</div>
   <div class="progress" aria-hidden="true"><div id="progFill"></div></div>
   <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-  <div class="lengths" id="lengths" role="radiogroup" data-t-aria="length">
-    <button role="radio" data-min="25" aria-checked="true">25</button>
-    <button role="radio" data-min="50" aria-checked="false">50</button>
-    <button role="radio" data-min="90" aria-checked="false">90</button>
-    <span data-t="min">min</span>
-  </div>
   <div class="actions">
     <button id="focusBtn" class="primary">Start focus</button>
-    <button id="resetBtn" class="ghost" data-t="reset" hidden>Reset</button>
+    <button id="resetBtn" class="round ghosted" data-t-aria="reset" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></button>
   </div>
 </main>
 
-<!-- ============ SOUND DESK ============ -->
-<section class="desk" id="desk" data-t-aria="sounds">
-  <div class="desk-head">
-    <button id="playBtn" class="play" aria-label="Play sounds">
-      <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
-    </button>
-    <div class="desk-title">
-      <strong id="mixName">Sounds</strong>
-      <span id="mixSub"></span>
+<!-- ============ PANELS (one open at a time, floating above the dock) ============ -->
+<div class="panels" id="panels">
+  <section class="panel" id="p-sounds" data-t-aria="sounds" hidden>
+    <div class="p-head">
+      <h2 data-t="sounds">Sounds</h2>
+      <div class="p-tools">
+        <div class="seg" id="spaceSeg" role="radiogroup" data-t-aria="space">
+          <button role="radio" data-v="0" data-t="close">Close</button><button role="radio" data-v="1" data-t="room">Room</button><button role="radio" data-v="2" data-t="far">Far</button>
+        </div>
+        <label class="vol"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg>
+          <input id="masterVol" type="range" min="0" max="1" step="0.01" value="0.8" data-t-aria="master"></label>
+      </div>
     </div>
-    <label class="master">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg>
-      <input id="masterVol" type="range" min="0" max="1" step="0.01" value="0.8" data-t-aria="master">
-    </label>
-    <button class="pill" id="mixesBtn" aria-expanded="false" aria-controls="mixes"><span data-t="mixes">Mixes</span></button>
-  </div>
+    <div id="soundGroups"></div>
+    <div class="p-foot"><button class="text-btn" id="clearBtn" data-t="clear">Turn everything off</button></div>
+  </section>
 
-  <div class="mixes" id="mixes" hidden>
-    <div class="mix-cards" id="mixCards"></div>
-    <div class="mix-foot">
+  <section class="panel" id="p-mixes" hidden>
+    <div class="p-head">
+      <h2 data-t="mixes">Mixes</h2>
+      <div class="filters" id="mixFilters"></div>
+    </div>
+    <div class="mix-grid" id="mixGrid"></div>
+    <div class="p-foot">
       <form id="saveForm" class="save">
         <input id="presetName" type="text" maxlength="28" data-t-ph="mixName" data-t-aria="mixName">
-        <button type="submit" data-t="save">Save</button>
+        <button type="submit" data-t="saveMix">Save current mix</button>
       </form>
-      <button class="link-btn" id="shareBtn">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
-        <span data-t="share">Copy link to this mix</span>
-      </button>
+      <button class="text-btn" id="shareBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg><span data-t="share">Copy link</span></button>
     </div>
-  </div>
+  </section>
 
-  <div class="faders" id="faders"></div>
+  <section class="panel narrow" id="p-timer" hidden>
+    <div class="p-head"><h2 data-t="timer">Timer</h2></div>
+    <div class="t-row"><span class="t-label" data-t="focusLen">Focus</span><div class="t-opts" id="optFocus"></div></div>
+    <div class="t-row"><span class="t-label" data-t="shortLen">Short break</span><div class="t-opts" id="optShort"></div></div>
+    <div class="t-row"><span class="t-label" data-t="longLen">Long break</span><div class="t-opts" id="optLong"></div></div>
+    <label class="switch"><input type="checkbox" id="autoBreak" checked><span></span><em data-t="autoBreak">Start breaks automatically</em></label>
+    <p class="hint" data-t="cycleHint">Every 4th break is a long one.</p>
+  </section>
 
-  <div class="qmini" id="qmini" hidden>
-    <span class="qmini-dot"></span>
-    <button class="qmini-title" id="qminiTitle">Quran</button>
-    <button class="qmini-btn" id="qminiToggle" data-t-aria="playQ">
-      <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
-    </button>
-  </div>
-</section>
-
-<!-- ============ QURAN ============ -->
-<div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
-<aside class="sheet" id="quranSheet" role="dialog" aria-modal="true" aria-labelledby="qTitle" hidden>
-  <div class="sheet-head">
-    <h2 id="qTitle" data-t="quran">Quran</h2>
-    <button class="icon-btn" id="quranClose" data-t-aria="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-  </div>
-  <p class="bismillah" lang="ar" dir="rtl">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</p>
-  <div class="q-row">
-    <label><span data-t="surah">Surah</span><select id="surahSel"></select></label>
-    <label><span data-t="reciter">Reciter</span><select id="reciterSel"></select></label>
-  </div>
-  <div class="q-player">
-    <button id="qPrev" class="icon-btn" data-t-aria="prevS"><svg viewBox="0 0 24 24" class="fill"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
-    <button id="qPlay" class="play big" data-t-aria="playQ">
-      <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
-    </button>
-    <button id="qNext" class="icon-btn" data-t-aria="nextS"><svg viewBox="0 0 24 24" class="fill"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg></button>
-  </div>
-  <div class="q-progress">
-    <span id="qCur">0:00</span>
-    <input id="qSeek" type="range" min="0" max="100" step="0.1" value="0" data-t-aria="seek" style="--p:0%">
-    <span id="qDur">0:00</span>
-  </div>
-  <p id="qStatus" class="q-status" role="status"></p>
-  <div class="q-section">
-    <label class="switch"><input type="checkbox" id="qUnder" checked><span></span><em data-t="under">Nature sounds behind recitation</em></label>
-    <label class="q-under-lvl" id="qUnderLvlWrap"><span data-t="underLvl">Background</span>
-      <input id="qUnderLvl" type="range" min="0.05" max="0.8" step="0.01" value="0.3" data-t-aria="underLvl"></label>
-    <p class="hint" data-t="underHint"></p>
-  </div>
-  <div class="q-section">
+  <section class="panel narrow" id="p-quran" hidden>
+    <div class="p-head"><h2 data-t="quran">Quran</h2></div>
+    <p class="bismillah" lang="ar" dir="rtl">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</p>
+    <div class="q-row">
+      <label><span data-t="surah">Surah</span><select id="surahSel"></select></label>
+      <label><span data-t="reciter">Reciter</span><select id="reciterSel"></select></label>
+    </div>
+    <div class="q-player">
+      <button id="qPrev" class="round" data-t-aria="prevS"><svg viewBox="0 0 24 24" class="fill"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+      <button id="qPlay" class="play big" data-t-aria="playQ">
+        <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+      </button>
+      <button id="qNext" class="round" data-t-aria="nextS"><svg viewBox="0 0 24 24" class="fill"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg></button>
+    </div>
+    <div class="q-progress"><span id="qCur">0:00</span><input id="qSeek" type="range" min="0" max="100" step="0.1" value="0" data-t-aria="seek" style="--p:0%"><span id="qDur">0:00</span></div>
+    <p id="qStatus" class="q-status" role="status"></p>
+    <div class="q-sliders">
+      <label><span data-t="qVol">Recitation volume</span><input id="qVol" type="range" min="0" max="1" step="0.01" value="0.9"></label>
+      <label><span data-t="qNature">Nature sounds while reciting</span><input id="qNature" type="range" min="0" max="1" step="0.01" value="0.35"></label>
+    </div>
+    <label class="switch"><input type="checkbox" id="qSoft"><span></span><em data-t="qSoft">Soft and distant</em></label>
+    <p class="hint" id="qSoftHint" data-t="qSoftHint">Like hearing it from the mosque across the field.</p>
     <label class="switch"><input type="checkbox" id="qAuto" checked><span></span><em data-t="auto">Continue to next surah</em></label>
     <label class="switch"><input type="checkbox" id="qRepeat"><span></span><em data-t="repeat">Repeat this surah</em></label>
-  </div>
-  <audio id="qAudio" preload="none"></audio>
-</aside>
+    <audio id="qAudio" preload="none" crossorigin="anonymous"></audio>
+    <audio id="qAudioPlain" preload="none"></audio>
+  </section>
+</div>
+
+<!-- ============ DOCK ============ -->
+<nav class="dock" id="dock" data-t-aria="controls">
+  <button id="playBtn" class="play" data-t-aria="play">
+    <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+  </button>
+  <button class="mixbtn" data-panel="mixes" aria-expanded="false">
+    <span class="mix-art" id="mixArt"></span>
+    <span class="mix-txt"><b id="mixName">Mix</b><small id="mixSub"></small></span>
+    <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+  </button>
+  <span class="dock-sep" aria-hidden="true"></span>
+  <button class="dk" data-panel="sounds" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M12 4v16M19 4v16"/><circle cx="5" cy="14" r="2.2"/><circle cx="12" cy="8" r="2.2"/><circle cx="19" cy="16" r="2.2"/></svg><span data-t="sounds">Sounds</span></button>
+  <button class="dk" data-panel="timer" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg><span data-t="timer">Timer</span></button>
+  <button class="dk" data-panel="quran" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5z"/><path d="M12 6v13.5"/></svg><span data-t="quran">Quran</span><i class="live-dot"></i></button>
+  <button class="dk" id="hideBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10.7 10.7 0 0 1 12 5c5.5 0 9 7 9 7a16 16 0 0 1-2.7 3.6M6.6 6.6C4.1 8.3 3 12 3 12s3.5 7 9 7a9.6 9.6 0 0 0 4.4-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg><span data-t="hide">Hide</span></button>
+</nav>
+<div class="hidden-hint" id="hiddenHint" data-t="showHint">Tap anywhere to bring the controls back</div>
 
 <script src="i18n.js"></script>
 <script src="sounds.js"></script>

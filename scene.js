@@ -8,7 +8,7 @@ const Scene = (() => {
   const cv = document.getElementById("scene"), g = cv.getContext("2d");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let W = 0, H = 0, dpr = 1, t = 0, last = performance.now();
-  const KEYS = ["rain", "tinroof", "thunder", "waves", "wind", "birds", "stream", "fire", "crickets", "frogs", "fan", "white", "pink", "brown"];
+  const KEYS = ["rain", "tinroof", "thunder", "waves", "wind", "birds", "stream", "fire", "crickets", "frogs", "fan", "lofi", "piano", "pad", "white", "pink", "brown"];
   const target = {}, lvl = {};
   KEYS.forEach(k => (target[k] = lvl[k] = 0));
   let windNow = 0.3, foam = 0, flash = 0, bolt = null, hourOverride = null;
@@ -45,7 +45,31 @@ const Scene = (() => {
   const embers = Array.from({ length: 110 }, () => newEmber(true));
   function newEmber(any) { return { x: rr(0.12, 0.88), y: any ? R() : 1.03, v: rr(0.03, 0.08), s: R() * 6.28, r: rr(0.7, 2), life: any ? R() : 0 }; }
   const flies = Array.from({ length: 60 }, () => ({ x: R(), y: rr(0.62, 0.95), a: R() * 6.28, sp: rr(0.01, 0.03), ph: R() * 6.28, hz: rr(0.3, 0.9) }));
-  const clouds = Array.from({ length: 7 }, () => ({ x: R() * 1.2 - 0.1, y: rr(0.05, 0.36), w: rr(0.22, 0.42), h: rr(0.035, 0.07), d: rr(0.5, 1.2) }));
+  function cloudSprite(w, h, seed) {
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const x = c.getContext("2d"), img = x.createImageData(w, h), G = 64, grid = [];
+    for (let o = 0; o < 5; o++) { const n = (G >> (4 - o)) + 2; grid.push(Array.from({ length: n * n }, () => R())); }
+    const noise = (u, v) => {
+      let s = 0, a = 0.55;
+      for (let o = 0; o < 5; o++) {
+        const n = (G >> (4 - o)) + 2, gx = u * (n - 2), gy = v * (n - 2), ix = gx | 0, iy = gy | 0, fx = gx - ix, fy = gy - iy, g = grid[o];
+        const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy), at = (i, j) => g[(j % n) * n + (i % n)];
+        s += a * ((at(ix, iy) * (1 - sx) + at(ix + 1, iy) * sx) * (1 - sy) + (at(ix, iy + 1) * (1 - sx) + at(ix + 1, iy + 1) * sx) * sy); a *= 0.5;
+      }
+      return s;
+    };
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const u = i / w, v = j / h, dx = (u - 0.5) * 2, dy = (v - 0.58) * 2.4;
+      const fall = Math.max(0, 1 - (dx * dx + dy * dy * (dy > 0 ? 2.2 : 1)));
+      const d = Math.max(0, noise(u, v) * 1.25 - 0.42) * fall * 2.1;
+      const k = (j * w + i) * 4, shade = 255 - 70 * v;
+      img.data[k] = shade; img.data[k + 1] = shade; img.data[k + 2] = shade + 6; img.data[k + 3] = Math.min(255, d * 255);
+    }
+    x.putImageData(img, 0, 0); return c;
+  }
+  const sprites = [0, 1, 2, 3].map(i => cloudSprite(320, 120, i));
+  const clouds = Array.from({ length: 7 }, (_, i) => ({ x: R() * 1.3 - 0.15, y: rr(0.04, 0.34), s: rr(0.8, 1.7), d: rr(0.5, 1.2), sp: sprites[i % 4] }));
+  const trees = Array.from({ length: 90 }, () => ({ h: rr(0.4, 1), w: rr(0.6, 1.4), palm: R() < 0.18 }));
 
   const grain = document.createElement("canvas"); grain.width = grain.height = 160;
   { const gc = grain.getContext("2d"), d = gc.createImageData(160, 160); for (let i = 0; i < d.data.length; i += 4) { const v = R() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; } gc.putImageData(d, 0, 0); }
@@ -124,17 +148,16 @@ const Scene = (() => {
     }
 
     /* clouds */
-    const ca = 0.05 + overcast * 0.38 + lvl.wind * 0.04;
+    const ca = (isNight ? 0.16 : 0.5) + overcast * 0.35, cs = Math.max(W, 900) / 900;
     for (const c of clouds) {
-      c.x += dt * c.d * (0.003 + windNow * lvl.wind * 0.03 + lvl.thunder * 0.008);
-      if (c.x - c.w > 1.1) c.x = -c.w - 0.1;
-      const cx = c.x * W - par.x * 10 * c.d, cy = c.y * H, rx = c.w * W, ry = c.h * H;
-      const col = mix(isNight ? [36, 44, 64] : [236, 240, 246], [72, 80, 90], overcast);
-      const cg = g.createRadialGradient(cx, cy, 0, cx, cy, rx);
-      cg.addColorStop(0, rgb(col, ca)); cg.addColorStop(1, rgb(col, 0));
-      g.save(); g.translate(cx, cy); g.scale(1, ry / rx); g.translate(-cx, -cy);
-      g.fillStyle = cg; g.beginPath(); g.arc(cx, cy, rx, 0, 6.283); g.fill(); g.restore();
+      c.x += dt * c.d * (0.0025 + windNow * lvl.wind * 0.025 + lvl.thunder * 0.008);
+      const w = c.sp.width * c.s * cs, h = c.sp.height * c.s * cs;
+      if (c.x * W > W + 40) { c.x = -w / W - 0.05; c.y = rr(0.04, 0.34); }
+      g.globalAlpha = ca * (0.6 + 0.4 * c.d / 1.2);
+      g.drawImage(c.sp, c.x * W - par.x * 10 * c.d, c.y * H - h / 2, w, h);
     }
+    g.globalAlpha = 1;
+    if (overcast > 0.05) { g.fillStyle = `rgba(60,68,78,${overcast * 0.25})`; g.fillRect(0, 0, W, horizon); }
 
     /* lightning */
     if (flash > 0.01) { g.fillStyle = `rgba(225,232,255,${flash * 0.32})`; g.fillRect(0, 0, W, horizon); }
@@ -159,6 +182,19 @@ const Scene = (() => {
         const x = f.x + b.dx, y = f.y + b.dy, s = b.s * 7, w = Math.sin(t * b.hz * 6.28 + b.ph) * 0.7;
         g.lineWidth = 1.3 * b.s; g.beginPath(); g.moveTo(x - s, y - s * w); g.quadraticCurveTo(x - s * 0.4, y - s * 0.25, x, y); g.quadraticCurveTo(x + s * 0.4, y - s * 0.25, x + s, y - s * w); g.stroke();
       }
+    }
+
+    /* the far bank: a line of trees appears when the mix sounds like a village or forest */
+    const land = Math.max(0, Math.min(1, lvl.birds * 1.1 + lvl.stream * 0.9 + lvl.frogs * 0.7 + lvl.crickets * 0.5 - lvl.waves * 0.9));
+    if (land > 0.02) {
+      const tc = mix(mix(P.far, [18, 34, 26], 0.6), GREY, overcast * 0.3), step = W / (trees.length - 1);
+      g.fillStyle = rgb(mix(tc, [4, 8, 10], night * 0.6), land); g.beginPath(); g.moveTo(0, horizon + 2);
+      trees.forEach((tr, i) => {
+        const x = i * step - par.x * 3, th = (tr.palm ? 26 : 14) * tr.h * (0.6 + land * 0.4) * (H / 820);
+        if (tr.palm) { g.lineTo(x - 1, horizon - th * 0.7); g.lineTo(x - 7, horizon - th * 0.78); g.lineTo(x, horizon - th); g.lineTo(x + 7, horizon - th * 0.8); g.lineTo(x + 1, horizon - th * 0.7); }
+        else g.quadraticCurveTo(x - step * 0.5, horizon - th * 1.3, x, horizon - th * (0.5 + 0.5 * tr.w / 1.4));
+      });
+      g.lineTo(W, horizon + 2); g.closePath(); g.fill();
     }
 
     /* sea */
@@ -250,6 +286,13 @@ const Scene = (() => {
       g.fillStyle = `rgba(255,${180 + (s.life * 60) | 0},90,${s.life})`; g.beginPath(); g.arc(s.x, s.y, 1.6 * s.life + 0.4, 0, 6.283); g.fill();
     }
 
+    /* coconut palms on the shore, swaying with the wind (wide screens only) */
+    if (W >= 760) {
+      const sway = 0.03 + lvl.wind * windNow * 0.12 + lvl.thunder * 0.05, col = rgb(mix([6, 10, 14], P.near, 0.25), 0.94);
+      palm(W * 0.02, H * 1.02, H * 0.6, 0.2, sway, col, 1);
+      palm(W * 0.17, H * 1.03, H * 0.4, -0.08, sway * 1.2, col, 0.68);
+    }
+
     /* rain streaks, slanted by the live wind */
     const rainAmt = Math.min(1, lvl.rain * 0.55 + lvl.thunder * 0.6 + lvl.tinroof * 0.45);
     if (rainAmt > 0.02) {
@@ -293,6 +336,37 @@ const Scene = (() => {
       g.translate((R() * 160) | 0, (R() * 160) | 0); g.fillStyle = grainPat; g.fillRect(-160, -160, W + 320, H + 320); g.restore();
     }
     flash *= Math.pow(0.015, dt);
+  }
+
+  function palm(x0, y0, len, lean, sway, col, sc) {
+    const s = Math.sin(t * 0.8 + x0) * sway, bend = lean + s * 0.35;
+    const tx = x0 + Math.sin(bend) * len, ty = y0 - Math.cos(bend) * len, cx = x0 + Math.sin(lean) * len * 0.15 + 30 * sc, cy = y0 - len * 0.55;
+    g.fillStyle = col;
+    // tapered, slightly curved trunk
+    const q = u => [(1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * cx + u * u * tx, (1 - u) * (1 - u) * y0 + 2 * (1 - u) * u * cy + u * u * ty];
+    const left = [], right = [];
+    for (let i = 0; i <= 16; i++) {
+      const u = i / 16, [px, py] = q(u), [nx, ny] = q(Math.min(1, u + 0.01)), dx = nx - px, dy = ny - py, d = Math.hypot(dx, dy) || 1;
+      const w = (11 - 5.5 * u) * sc, ox = -dy / d * w, oy = dx / d * w;
+      left.push([px + ox, py + oy]); right.push([px - ox, py - oy]);
+    }
+    g.beginPath(); left.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); right.reverse().forEach(([x, y]) => g.lineTo(x, y)); g.closePath(); g.fill();
+    // fronds: filled, tapered, drooping leaves with notches so the leaflets read
+    for (let k = 0; k < 11; k++) {
+      const side = k % 2 ? 1 : -1, spread = (k / 10 - 0.5) * 3.3;
+      const a = -Math.PI / 2 + spread + s * (1.2 + Math.abs(spread) * 0.3) + Math.sin(t * 1.6 + k * 1.7) * sway * 0.5;
+      const L = (150 + ((k * 37) % 60)) * sc, droop = (0.42 + Math.abs(spread) * 0.25) * L;
+      const ex = tx + Math.cos(a) * L, ey = ty + Math.sin(a) * L * 0.6 + droop, mx = tx + Math.cos(a) * L * 0.55, my = ty + Math.sin(a) * L * 0.55 - 6 * sc;
+      const P = u => [(1 - u) * (1 - u) * tx + 2 * (1 - u) * u * mx + u * u * ex, (1 - u) * (1 - u) * ty + 2 * (1 - u) * u * my + u * u * ey];
+      const top = [], bot = [];
+      for (let i = 0; i <= 20; i++) {
+        const u = i / 20, [px, py] = P(u), [nx, ny] = P(Math.min(1, u + 0.02)), dx = nx - px, dy = ny - py, d = Math.hypot(dx, dy) || 1;
+        const notch = i % 2 ? 0.5 : 1, w = 15 * sc * Math.sin(Math.PI * Math.min(1, u * 1.15)) ** 0.8 * notch;
+        top.push([px - dy / d * w * 0.55, py + dx / d * w * 0.55]); bot.push([px + dy / d * w, py - dx / d * w]);
+      }
+      g.beginPath(); top.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); bot.reverse().forEach(([x, y]) => g.lineTo(x, y)); g.closePath(); g.fill();
+    }
+    for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(tx + (i - 1.5) * 5 * sc, ty + 7 * sc + (i % 2) * 3 * sc, 5.5 * sc, 0, 6.283); g.fill(); }   // coconuts
   }
 
   function spawnFlock() {
