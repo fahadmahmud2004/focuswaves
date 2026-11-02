@@ -39,6 +39,9 @@ const STR = {
     musicOpt: "Music (optional)", musicNote: "Music pauses on its own while the Quran plays.", musicPausedQ: "Music stays off while the Quran plays. Nature sounds keep going.",
     faceNames: { bold: "Bold", tide: "Tide", mirror: "Mirror", glass: "Glass", clear: "Clear", tall: "Tall", wide: "Wide" },
     layout: "Size and position", size: "Clock size", resetPos: "Reset", dragHint: "Drag the clock to move it anywhere.",
+    pulse: "Focus pulse", pOff: "Off", pCalm: "Calm", pFlow: "Flow", pFocus: "Focus", pDeep: "Deep", intensity: "Intensity",
+    pulseHint: "A gentle rhythm in the sound, based on research on how brain rhythms follow sound. Effects differ from person to person. Off while the Quran plays.",
+    neuro: "Deep focus",
     hide: "Hide", showHint: "Tap anywhere to bring the controls back", controls: "Controls", mix: "Mix",
   },
   bn: {
@@ -80,6 +83,9 @@ const STR = {
     musicOpt: "মিউজিক (ঐচ্ছিক)", musicNote: "কুরআন চলার সময় মিউজিক নিজে থেকেই বন্ধ থাকে।", musicPausedQ: "কুরআন চলার সময় মিউজিক বন্ধ থাকবে। প্রকৃতির শব্দ চলতে থাকবে।",
     faceNames: { bold: "মোটা", tide: "জোয়ার", mirror: "প্রতিচ্ছবি", glass: "কাচ", clear: "স্বচ্ছ", tall: "লম্বা", wide: "চওড়া" },
     layout: "আকার ও জায়গা", size: "ঘড়ির আকার", resetPos: "আগের মতো", dragHint: "ঘড়িটা টেনে যেখানে খুশি সরাও।",
+    pulse: "ফোকাস পালস", pOff: "বন্ধ", pCalm: "শান্ত", pFlow: "ফ্লো", pFocus: "ফোকাস", pDeep: "ডিপ", intensity: "তীব্রতা",
+    pulseHint: "শব্দের ভেতর হালকা একটা ছন্দ। মস্তিষ্কের ছন্দ কীভাবে শব্দের ছন্দ ধরে, সেই গবেষণার ওপর ভিত্তি করে বানানো। সবার ওপর প্রভাব এক রকম না। কুরআন চলার সময় বন্ধ থাকে।",
+    neuro: "ডিপ ফোকাস",
     hide: "লুকাও", showHint: "কন্ট্রোল ফিরিয়ে আনতে যেকোনো জায়গায় ট্যাপ করো", controls: "কন্ট্রোল", mix: "মিক্স",
   },
 };

@@ -16,15 +16,18 @@
   const currentMix = () => Object.fromEntries(SOUNDS.filter(s => state[s.id].on).map(s => [s.id, +state[s.id].vol.toFixed(2)]));
 
   const MUSIC = new Set(SOUNDS.filter(s => s.group === "music").map(s => s.id));
+  const QMUTE = new Set([...MUSIC, "binaural"]);       // silent while the Quran plays
+  const pulse = Object.assign({ hz: 0, depth: 0.45 }, store.get("pulse", {}));
   const quranOn = () => qWant || quranActive();          // music never plays alongside the Quran
   function sync() {
     const vol = {}, lv = {}, q = quranOn();
     for (const s of SOUNDS) {
-      const st = state[s.id], v = st.on && !(q && MUSIC.has(s.id)) ? st.vol : 0;
+      const st = state[s.id], v = st.on && !(q && QMUTE.has(s.id)) ? st.vol : 0;
       vol[s.id] = playing ? v * v : 0; lv[s.id] = playing || !started ? v : 0;
     }
     document.body.classList.toggle("q-muted", q);
-    Audio_.setVolumes(vol); Scene.set(lv);
+    Audio_.setVolumes(vol); Scene.set(lv); Audio_.setPulse(q || !playing ? 0 : pulse.hz, pulse.depth);
+    store.set("pulse", pulse); paintPulse();
     store.set("mix", currentMix()); store.set("activeMix", activeMix);
     paintDockMix(); if (!$("#p-mixes").hidden) markActiveMix();
   }
@@ -130,13 +133,25 @@
     if (v === 0 && st.on) { st.on = false; }
     paintTile(id); sync();
   }
-  function applyMix(mix, id, start = true) {
+  function applyMix(mix, id, start = true, pul) {
+    if (pul !== undefined) { pulse.hz = pul ? pul.hz : 0; if (pul) pulse.depth = pul.depth; }
     for (const s of SOUNDS) { const v = mix[s.id]; state[s.id].on = v > 0; if (v > 0) state[s.id].vol = v; paintTile(s.id); }
     activeMix = id || null;
     if (start && quranOn() && Object.keys(mix).some(k => MUSIC.has(k))) toast(t("musicPausedQ"));
     if (start && started && !playing) setPlaying(true); else sync();
   }
   $("#clearBtn").addEventListener("click", () => { SOUNDS.forEach(s => { state[s.id].on = false; paintTile(s.id); }); activeMix = null; if (playing) setPlaying(false); else sync(); });
+
+  function paintPulse() {
+    $$("#pulseSeg button").forEach(b => b.setAttribute("aria-checked", +b.dataset.hz === pulse.hz));
+    const d = $("#pulseDepth"); if (document.activeElement !== d) d.value = pulse.depth; setP(d);
+    $("#hzv").textContent = pulse.hz ? pulse.hz + " Hz" : ""; $(".pulse").classList.toggle("off", !pulse.hz);
+  }
+  $$("#pulseSeg button").forEach(b => b.addEventListener("click", () => {
+    pulse.hz = +b.dataset.hz; activeMix = null;
+    if (pulse.hz && !playing && started) setPlaying(true); else sync();
+  }));
+  $("#pulseDepth").addEventListener("input", e => { pulse.depth = +e.target.value; setP(e.target); sync(); });
 
   const mv = $("#masterVol"); mv.value = store.get("master", 0.8); setP(mv);
   mv.addEventListener("input", () => { setP(mv); store.set("master", +mv.value); Audio_.setMaster(+mv.value); });
@@ -163,24 +178,25 @@
     $("#mixArt").style.background = artCss(m ? m.art : ["#56677a", "#1f2a35"]);
   }
   function renderMixes() {
-    const cats = [["nature", "nature"], ["focus", "focusCat"], ["music", "music"]];
+    const cats = [["nature", "nature"], ["neuro", "neuro"], ["focus", "focusCat"], ["music", "music"]];
     if (userMixes().length) cats.push(["yours", "yours"]);
     const f = $("#mixFilters"); f.innerHTML = "";
     cats.forEach(([id, key]) => { const b = document.createElement("button"); b.textContent = t(key); b.setAttribute("aria-pressed", mixFilter === id); b.onclick = () => { mixFilter = id; renderMixes(); }; f.appendChild(b); });
     const grid = $("#mixGrid"); grid.innerHTML = "";
     if (mixFilter === "music") { const n = document.createElement("p"); n.className = "music-note"; n.style.gridColumn = "1 / -1"; n.textContent = t("musicNote"); grid.appendChild(n); }
-    const card = (name, note, mix, art, id, del) => {
+    const card = (name, note, mix, art, id, del, pul) => {
       const c = document.createElement("button"); c.className = "mcard"; c.dataset.id = id;
       c.innerHTML = `<div class="m-art"><div class="ico">${Object.keys(mix).slice(0, 4).map(k => `<svg viewBox="0 0 24 24">${ICONS[k]}</svg>`).join("")}</div></div><div class="m-body"><b></b><span></span></div>`;
       c.querySelector(".m-art").style.background = artCss(art);
       c.querySelector("b").textContent = name; c.querySelector(".m-body span").textContent = note;
-      c.addEventListener("click", e => { if (e.target.closest(".x")) return; applyMix(mix, id); markActiveMix(); });
+      if (pul && pul.hz) { const hz = document.createElement("span"); hz.className = "m-hz"; hz.textContent = pul.hz + " Hz"; c.querySelector(".m-art").appendChild(hz); }
+      c.addEventListener("click", e => { if (e.target.closest(".x")) return; applyMix(mix, id, true, pul || null); markActiveMix(); });
       if (del) { const x = document.createElement("span"); x.className = "x"; x.setAttribute("role", "button"); x.setAttribute("aria-label", "Delete " + name); x.textContent = "×"; x.onclick = del; c.appendChild(x); }
       grid.appendChild(c);
     };
-    if (mixFilter !== "yours") MIXES.filter(m => m.cat === mixFilter).forEach(m => card(nameOf(m), LANG === "bn" ? m.noteBn : m.note, m.mix, m.art, m.id));
+    if (mixFilter !== "yours") MIXES.filter(m => m.cat === mixFilter).forEach(m => card(nameOf(m), LANG === "bn" ? m.noteBn : m.note, m.mix, m.art, m.id, null, m.pulse));
     if (mixFilter === "yours") userMixes().forEach((u, i) => card(u.name, Object.keys(u.mix).map(k => nameOf(soundById(k))).join(" · "), u.mix, artOf(u), "u:" + u.name,
-      () => { const all = userMixes(); all.splice(i, 1); store.set("presets", all); if (activeMix === "u:" + u.name) activeMix = null; if (!all.length) mixFilter = "nature"; renderMixes(); paintDockMix(); }));
+      () => { const all = userMixes(); all.splice(i, 1); store.set("presets", all); if (activeMix === "u:" + u.name) activeMix = null; if (!all.length) mixFilter = "nature"; renderMixes(); paintDockMix(); }, u.pulse));
     markActiveMix();
   }
   const markActiveMix = () => $$("#mixGrid .mcard").forEach(c => c.classList.toggle("active", c.dataset.id === activeMix));
@@ -190,14 +206,15 @@
     if (!Object.keys(mix).length) return toast(t("turnOn"));
     if (!name) return $("#presetName").focus();
     const base = MIXES.find(m => m.id === activeMix);
-    const all = userMixes().filter(u => u.name !== name); all.push({ name, mix, art: base ? base.art : null }); store.set("presets", all);
+    const all = userMixes().filter(u => u.name !== name); all.push({ name, mix, art: base ? base.art : null, pulse: pulse.hz ? { ...pulse } : null }); store.set("presets", all);
     $("#presetName").value = ""; activeMix = "u:" + name; renderMixes(); sync(); toast(`${t("saved")}: ${name}`);
   });
-  const encodeMix = m => Object.entries(m).map(([k, v]) => `${k}-${Math.round(v * 100)}`).join(".");
+  const encodeMix = m => Object.entries(m).map(([k, v]) => `${k}-${Math.round(v * 100)}`).concat(pulse.hz ? [`hz${pulse.hz}-${Math.round(pulse.depth * 100)}`] : []).join(".");
   function decodeMix(h) {
     const m = /mix=([\w.-]+)/.exec(h); if (!m) return null;
-    const out = {}; m[1].split(".").forEach(p => { const [k, v] = p.split("-"); if (state[k] && +v > 0) out[k] = Math.min(100, +v) / 100; });
-    return Object.keys(out).length ? out : null;
+    const out = {}; let pl = null;
+    m[1].split(".").forEach(p => { const [k, v] = p.split("-"); if (/^hz\d+$/.test(k)) pl = { hz: Math.min(40, +k.slice(2)), depth: Math.min(70, +v || 45) / 100 }; else if (state[k] && +v > 0) out[k] = Math.min(100, +v) / 100; });
+    if (!Object.keys(out).length) return null; Object.defineProperty(out, "pulse", { value: pl, enumerable: false }); return out;
   }
   $("#shareBtn").addEventListener("click", async () => {
     const mix = currentMix(); if (!Object.keys(mix).length) return toast(t("turnOn"));
@@ -294,7 +311,7 @@
     F.running ? pauseTimer() : startTimer();
   });
   resetBtn.addEventListener("click", () => { if (CM === "stopwatch") return swReset(); clearInterval(F.iv); F.running = false; F.mode = "focus"; F.remaining = total(); lockWake(false); unZen(); paint(); });
-  function notify(title, body) { if (document.hidden && "Notification" in window && Notification.permission === "granted") try { new Notification(title, { body, icon: "brand/icon-192.png", silent: true }); } catch {} }
+  function notify(title, body) { if (document.hidden && "Notification" in window && Notification.permission === "granted") try { new Notification(title, { body, icon: "brand/fw-icon-192.png", silent: true }); } catch {} }
 
   /* ---- clock modes: timer, stopwatch, clock ---- */
   let CM = store.get("cmode", "timer");
@@ -485,7 +502,7 @@
 
   function mediaMeta() {
     if (!("mediaSession" in navigator)) return;
-    const s = +surahSel.value, art = [{ src: "brand/icon-512.png", sizes: "512x512" }];
+    const s = +surahSel.value, art = [{ src: "brand/fw-icon-512.png", sizes: "512x512" }];
     navigator.mediaSession.metadata = new MediaMetadata(quranActive()
       ? { title: `Surah ${SURAHS[s - 1]}`, artist: RECITERS[+recSel.value].name, album: "Focus Waves", artwork: art }
       : { title: mixLabel() || t("yourMix"), artist: "Focus Waves", artwork: art });
@@ -512,7 +529,7 @@
     try { await Audio_.init(); Audio_.setSpace(space); } catch (err) { console.error(err); toast(t("noAudio")); }
     Audio_.onEvent(Scene.event);
     $("#intro").classList.add("gone"); document.body.classList.remove("pre");
-    if (shared) { applyMix(shared, null, false); history.replaceState(null, "", location.pathname); toast(t("sharedLoaded")); }
+    if (shared) { applyMix(shared, null, false, shared.pulse); history.replaceState(null, "", location.pathname); toast(t("sharedLoaded")); }
     setPlaying(true);
   }
   $("#beginBtn").addEventListener("click", enter);
@@ -537,7 +554,7 @@
     items.slice(0, 4).forEach(it => {
       const b = document.createElement("button"); b.className = "pick"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", it.id === picked);
       b.innerHTML = `<i></i><span></span>`; b.querySelector("i").style.background = `linear-gradient(180deg, ${it.art[0]} 0 52%, ${it.art[1]} 52%)`; b.querySelector("span").textContent = it.name;
-      b.onclick = () => { picked = it.id; applyMix(it.mix, it.id === "__last" ? store.get("activeMix", null) : it.id, false); buildPicks(); };
+      b.onclick = () => { picked = it.id; applyMix(it.mix, it.id === "__last" ? store.get("activeMix", null) : it.id, false, it.id === "__last" ? undefined : null); buildPicks(); };
       box.appendChild(b);
     });
   }
@@ -545,7 +562,7 @@
   /* ============================ INIT ============================ */
   const saved = store.get("mix", null);
   relabel();
-  if (shared) applyMix(shared, null, false);
+  if (shared) applyMix(shared, null, false, shared.pulse);
   else if (saved && Object.keys(saved).length) applyMix(saved, store.get("activeMix", null), false);
   else applyMix(MIXES[0].mix, MIXES[0].id, false);
   if (cur && !cur.getAttribute("src")) { attempts = quranSources(RECITERS[+recSel.value], +surahSel.value).flatMap(url => [{ url, el: qA }, { url, el: qB }]); attemptIdx = 0; }

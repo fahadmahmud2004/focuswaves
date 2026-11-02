@@ -36,6 +36,14 @@ Each one is a small simulation with random events and slowly drifting character,
 "Close / Room / Far" in the Sounds panel changes how near the sounds feel (filter + reverb).
 To change the curated mixes, edit `MIXES` in `sounds.js` (values 0 to 1; `cat` is nature, music or focus; `art` is the card colours).
 
+## Deep focus (Focus pulse)
+A rhythmic amplitude modulation applied to the whole sound bed (the idea behind "neural phase locking": brain rhythms tend to follow
+a steady rhythm in what you hear). Rates: Calm 6 Hz, Flow 10 Hz, Focus 14 Hz, Deep 16 Hz, with an intensity control.
+A binaural beat (headphones) follows the same rate. 13 "Deep focus" mixes set sounds + rate + intensity for a task
+(deep work, study, reading, memorizing, coding, problem solving, power nap, breaks...).
+The research is promising but not settled, and effects vary; the site says so and makes no medical claims.
+Pulse and binaural switch off while the Quran plays.
+
 ## Quran
 The recitation has its own volume, a "soft and distant" mode, and a slider for how loud the nature sounds stay while it plays.
 Volume and soft mode go through Web Audio when the audio host sends CORS headers; otherwise the player falls back to a plain

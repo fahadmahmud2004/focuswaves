@@ -10,8 +10,8 @@
 <meta property="og:image" content="https://focus.freakingwaves.com/brand/og.png">
 <meta name="theme-color" content="#0b1520">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="brand/favicon-64.png" type="image/png">
-<link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+<link rel="icon" href="brand/fw-favicon-64.png" type="image/png">
+<link rel="apple-touch-icon" href="brand/fw-apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Focus Waves">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -77,6 +77,14 @@
         <label class="vol"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg>
           <input id="masterVol" type="range" min="0" max="1" step="0.01" value="0.8" data-t-aria="master"></label>
       </div>
+    </div>
+    <div class="pulse">
+      <div class="pulse-top"><span class="pulse-title" data-t="pulse">Focus pulse</span>
+        <div class="seg" id="pulseSeg" role="radiogroup" data-t-aria="pulse">
+          <button role="radio" data-hz="0" data-t="pOff">Off</button><button role="radio" data-hz="6" data-t="pCalm">Calm</button><button role="radio" data-hz="10" data-t="pFlow">Flow</button><button role="radio" data-hz="14" data-t="pFocus">Focus</button><button role="radio" data-hz="16" data-t="pDeep">Deep</button>
+        </div></div>
+      <div class="pulse-row" id="pulseRow"><span data-t="intensity">Intensity</span><input id="pulseDepth" type="range" min="0.15" max="0.7" step="0.01" value="0.45" data-t-aria="intensity"><span class="hzv" id="hzv"></span></div>
+      <p class="hint flush" data-t="pulseHint">A gentle rhythm in the sound, based on research on how brain rhythms follow sound. Effects differ from person to person.</p>
     </div>
     <div id="soundGroups"></div>
     <div class="p-foot"><button class="text-btn" id="clearBtn" data-t="clear">Turn everything off</button></div>

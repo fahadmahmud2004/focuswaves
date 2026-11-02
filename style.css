@@ -173,6 +173,17 @@ html[lang="bn"] .p-head h2 { font-family: "Hind Siliguri", sans-serif; font-weig
 .vol svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
 .vol input { width: 120px; }
 
+/* focus pulse */
+.pulse { background: rgba(255,253,240,.04); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin-bottom: 14px; }
+.pulse-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pulse-title { font-weight: 600; font-size: 14px; }
+.pulse-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; color: var(--ink-2); }
+.pulse-row input { flex: 1; }
+.hzv { font-variant-numeric: tabular-nums; color: var(--ink); min-width: 44px; text-align: right; }
+.pulse .hint { margin-top: 8px; }
+.pulse.off .pulse-row { opacity: .4; pointer-events: none; }
+.m-hz { position: absolute; top: 6px; left: 8px; z-index: 1; font-size: 11px; font-weight: 600; letter-spacing: .04em; background: rgba(0,0,0,.35); color: #fff; padding: 2px 7px; border-radius: 999px; }
+
 /* sounds */
 .group h3 { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin: 4px 0 8px; }
 html[lang="bn"] .group h3 { letter-spacing: 0; text-transform: none; font-size: 13px; }
@@ -194,10 +205,10 @@ html[lang="bn"] .group h3 { letter-spacing: 0; text-transform: none; font-size: 
 .filters button { border: 0; background: none; color: var(--ink-2); padding: 5px 12px; border-radius: 999px; font-size: 13px; }
 .filters button[aria-pressed="true"] { background: var(--ink); color: var(--char); font-weight: 600; }
 .mix-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
-.mcard { position: relative; text-align: left; border: 1px solid var(--line); background: rgba(255,253,240,.03); border-radius: 18px; padding: 0; overflow: hidden; transition: border-color .2s, transform .2s var(--ease); }
+.mcard { position: relative; display: flex; flex-direction: column; justify-content: flex-start; text-align: left; border: 1px solid var(--line); background: rgba(255,253,240,.03); border-radius: 18px; padding: 0; overflow: hidden; transition: border-color .2s, transform .2s var(--ease); }
 .mcard:hover { border-color: var(--line-2); transform: translateY(-2px); }
 .mcard.active { border-color: var(--ink); }
-.m-art { height: 62px; position: relative; }
+.m-art { height: 62px; flex: none; position: relative; }
 .m-art::after { content: ""; position: absolute; left: 0; right: 0; top: 54%; height: 1px; background: rgba(255,255,255,.25); }
 .m-art .ico { position: absolute; left: 10px; bottom: 6px; display: flex; gap: 4px; color: rgba(255,255,255,.9); z-index: 1; }
 .m-art .ico svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }

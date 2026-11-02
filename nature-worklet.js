@@ -542,6 +542,20 @@ class Owl {              // a spotted owlet / owl: soft "hoo ... hoo-hoo" from t
   }
 }
 
+/* ---- binaural beat: a slightly different tone in each ear (headphones). Follows the focus pulse rate. ---- */
+class Binaural {
+  constructor(p) { this.p = p; this.pl = 0; this.pr = 0; this.bed = new Pink(); this.bedLp = new LP(900); this.beat = 14; }
+  render(n, L, R) {
+    const want = this.p.pulse.hz > 0 ? this.p.pulse.hz : 14; this.beat += (want - this.beat) * 0.02;
+    const fl = 196 / SR, fr = (196 + this.beat) / SR;
+    for (let i = 0; i < n; i++) {
+      this.pl += fl; this.pr += fr; if (this.pl > 1) this.pl -= 1; if (this.pr > 1) this.pr -= 1;
+      const b = this.bedLp.run(this.bed.run()) * 0.05;
+      L[i] += fsin(this.pl) * 0.11 + b; R[i] += fsin(this.pr) * 0.11 + b;
+    }
+  }
+}
+
 /* ===================== MUSIC ===================== */
 const Q = { maj7: [0, 4, 7, 11], maj9: [0, 4, 7, 11, 14], min7: [0, 3, 7, 10], min9: [0, 3, 7, 10, 14], dom9: [0, 4, 7, 10, 14], m11: [0, 3, 7, 10, 17], add9: [0, 4, 7, 14] };
 const PROGS = [
@@ -694,12 +708,13 @@ const MAKERS = {
   wind: p => new Wind(p), birds: p => new Birds(p), stream: p => new Stream(p), fire: p => new Fire(p),
   crickets: p => new Crickets(p), frogs: p => new Frogs(p), fan: p => new Fan(p),
   gulls: p => new Gulls(p), leaves: () => new Leaves(), cicadas: () => new Cicadas(), owl: () => new Owl(),
+  binaural: p => new Binaural(p),
   lofi: p => new Lofi(p), piano: p => new Piano(p), pad: p => new Pad(p),
   white: () => new Noise("white"), pink: () => new Noise("pink"), brown: () => new Noise("brown"),
 };
 
 // output trims so every sound sits at a similar loudness at the same slider position
-const TRIM = { gulls: 5, leaves: 5.5, cicadas: 0.6, owl: 3, lofi: 0.7, piano: 1.9, pad: 2.4, birds: 2.8, frogs: 2.4, crickets: 2.2, wind: 1.25, waves: 0.85, tinroof: 2.4, thunder: 3.3, stream: 1.35 };
+const TRIM = { binaural: 1, gulls: 5, leaves: 5.5, cicadas: 0.6, owl: 3, lofi: 0.7, piano: 1.9, pad: 2.4, birds: 2.8, frogs: 2.4, crickets: 2.2, wind: 1.25, waves: 0.85, tinroof: 2.4, thunder: 3.3, stream: 1.35 };
 
 class NatureProcessor extends AudioWorkletProcessor {
   constructor() {
@@ -707,8 +722,10 @@ class NatureProcessor extends AudioWorkletProcessor {
     this.gens = {}; this.gain = {}; this.target = {};
     this.buf = [new Float32Array(128), new Float32Array(128), new Float32Array(128), new Float32Array(128)];
     this.events = []; this.harmony = new Harmony();
+    this.pulse = { hz: 0, depth: 0 }; this.pd = 0; this.pph = 0; this.phz = 14;
     this.port.onmessage = e => {
-      const { vol } = e.data;
+      const { vol, pulse } = e.data;
+      if (pulse) this.pulse = { hz: +pulse.hz || 0, depth: Math.max(0, Math.min(0.9, +pulse.depth || 0)) };
       if (vol) for (const id in vol) { if (!MAKERS[id]) continue; this.target[id] = vol[id]; if (!this.gens[id] && vol[id] > 0) { this.gens[id] = MAKERS[id](this); this.gain[id] = 0; } }
     };
   }
@@ -729,6 +746,19 @@ class NatureProcessor extends AudioWorkletProcessor {
         const g = (g0 + (g1 - g0) * (i / n)) * trim;
         dL[i] += L[i] * g; dR[i] += R[i] * g; wL[i] += WL[i] * g; wR[i] += WR[i] * g;
       }
+    }
+    // Focus pulse: rhythmic amplitude modulation of the whole bed (the idea behind "neural phase locking").
+    // Depth glides so switching modes never clicks; a raised-cosine shape keeps the pulse smooth.
+    const wantD = this.pulse.hz > 0 ? this.pulse.depth : 0;
+    if (wantD > 0 || this.pd > 0.0005) {
+      if (this.pulse.hz > 0) this.phz += (this.pulse.hz - this.phz) * 0.05;
+      const d0 = this.pd, d1 = d0 + (wantD - d0) * Math.min(1, n / (SR * 0.8)), inc = this.phz / SR;
+      for (let i = 0; i < n; i++) {
+        this.pph += inc; if (this.pph > 1) this.pph -= 1;
+        const c = 0.5 - 0.5 * fsin(this.pph + 0.25), d = d0 + (d1 - d0) * (i / n), g = 1 - d * c * c * (3 - 2 * c);
+        dL[i] *= g; dR[i] *= g; wL[i] *= g; wR[i] *= g;
+      }
+      this.pd = d1;
     }
     if (this.events.length) { this.port.postMessage({ events: this.events }); this.events = []; }
     return true;

@@ -1,15 +1,18 @@
 {
-  "name": "Focus Waves by Freaking Waves",
+  "id": "/",
+  "name": "Focus Waves",
   "short_name": "Focus Waves",
-  "description": "Calm nature sounds, focus sessions and Quran recitation for study.",
+  "description": "Live nature sounds, deep-focus pulses, a focus timer and Quran recitation. By Freaking Waves.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0b1520",
   "theme_color": "#0b1520",
+  "categories": ["education", "productivity", "lifestyle"],
   "icons": [
-    { "src": "brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "brand/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "brand/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "brand/fw-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "brand/fw-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "brand/fw-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

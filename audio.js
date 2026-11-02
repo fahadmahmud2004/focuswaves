@@ -46,6 +46,7 @@ const Audio_ = (() => {
     resume() { return ctx && ctx.state !== "running" ? ctx.resume() : Promise.resolve(); },
     suspend() { return ctx && ctx.state === "running" ? ctx.suspend() : Promise.resolve(); },
     setVolumes(vol) { node && node.port.postMessage({ vol }); },
+    setPulse(hz, depth) { node && node.port.postMessage({ pulse: { hz, depth } }); },
     setMaster(v) { master && master.gain.setTargetAtTime(v, ctx.currentTime, 0.08); },
     setDuck(v) { duck && duck.gain.setTargetAtTime(v, ctx.currentTime, 0.6); },
     // 0 = right next to you, 1 = room, 2 = far away
