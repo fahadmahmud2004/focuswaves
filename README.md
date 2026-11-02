@@ -17,19 +17,23 @@ To update later, upload the folder again (or connect a GitHub repo for auto-depl
 ## Files
 | File | What it is |
 |---|---|
-| `index.html`, `style.css` | Page and design. Brand colors and fonts are the tokens at the top of `style.css` |
-| `scene.js` | The living sea: follows local time of day and reacts to the sound mix |
-| `sounds.js` | Sound list, icons, ready-made mixes, and **your own recorded sounds** |
-| `gen.js`, `audio-worker.js` | Built-in sounds, generated in a background worker (no audio files) |
-| `quran.js` | Reciters and surah names |
-| `i18n.js` | English / Bangla text (English is default) |
-| `app.js` | Player, focus sessions, stats, mixes, Quran player with background ducking |
+| `index.html`, `style.css` | Page and design. Colours and fonts are the tokens at the top of `style.css` (same palette as freakingwaves.com) |
+| `nature-worklet.js` | **The sound engine.** Every sound is synthesised live in an AudioWorklet, so nothing loops or repeats |
+| `audio.js` | Connects the engine to the speakers: reverb, limiter, Quran ducking, chime |
+| `scene.js` | The living sea. Follows local time of day and reacts to sound events (lightning before thunder, foam when a wave breaks, sparks, drips, birds) |
+| `sounds.js` | Sound list, icons and the curated mixes |
+| `i18n.js` | English (default) and Bangla text |
+| `quran.js` | Reciters, surah names, audio sources |
+| `app.js` | Everything you click: intro, faders, mixes, share links, focus sessions, zen mode, stats, Quran player |
 | `sw.js`, `manifest.webmanifest` | Installable app / offline support |
 
-## Adding your own sounds
-Put a loopable `.mp3`/`.ogg` in `sounds/` and add a line in `CUSTOM_SOUNDS` in `sounds.js`.
-Only use audio you recorded or that is CC0 / free to use (freesound.org with CC0 filter, pixabay.com/sound-effects).
-Keep each file under 25 MB (Cloudflare Pages limit). 1–3 MB per loop is ideal.
+## Sounds
+Rain, tin roof, thunder, waves, wind, birds (koel, spotted dove, songbirds), stream, fireplace, crickets, frogs, fan, white / pink / brown noise.
+Each one is a small simulation with random events and slowly drifting character, not a recording.
+To change how a mix sounds, edit `MIXES` in `sounds.js`; values are 0 to 1.
+
+## Share links
+"Copy link to this mix" gives a link like `focus.freakingwaves.com/#mix=rain-60.waves-30`. Opening it loads that mix.
 
 ## Quran audio
 Sources are tried in order until one plays (12 s timeout each):

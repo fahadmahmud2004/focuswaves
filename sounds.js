@@ -1,57 +1,46 @@
-/* =========================================================
-   SOUND LIBRARY
-   ---------------------------------------------------------
-   Built-in sounds are generated in the browser (no files, no
-   copyright worries, zero bandwidth).
-
-   To add your OWN recorded sound:
-     1. Put a loopable file in /sounds  (e.g. sounds/birds.mp3)
-     2. Add an entry to CUSTOM_SOUNDS below:
-        { id: "birds", name: "Birds", icon: "bird", file: "sounds/birds.mp3" }
-   Use a CC0 / your-own recording (freesound.org CC0, pixabay.com/sound-effects).
-   ========================================================= */
-const CUSTOM_SOUNDS = [
-  // { id: "birds", name: "Birds", icon: "bird", file: "sounds/birds.mp3" },
-  // { id: "cafe",  name: "Café",  icon: "cup",  file: "sounds/cafe.mp3" },
-];
-
+/* Sound catalogue and curated mixes. Every sound is generated live by nature-worklet.js. */
 const ICONS = {
-  rain:   '<path d="M7 15a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 7.5 3.75 3.75 0 0 1 17.25 15"/><path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2"/>',
-  storm:  '<path d="M7 14a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 6.5 3.75 3.75 0 0 1 17.25 14"/><path d="M13 13l-3 4h4l-3 4"/>',
-  wind:   '<path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h16a3 3 0 1 1-3 3"/><path d="M3 16h7"/>',
-  waves:  '<path d="M2 9c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 19c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/>',
-  fire:   '<path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-8.5z"/>',
-  stream: '<path d="M4 4c4 2 0 6 4 8s0 6 4 8"/><path d="M12 4c4 2 0 6 4 8s0 6 4 8"/>',
-  night:  '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/><path d="M17 4v2M16 5h2"/>',
-  fan:    '<circle cx="12" cy="12" r="1.5"/><path d="M12 10.5C12 6 9 4 7 5s-1 4 5 5.5M13.5 12c4.5 0 6.5 3 5.5 5s-4 1-5.5-5M10.5 12.5C7 15 7 19 9 19.5s3.5-2.5 1.5-7"/>',
-  white:  '<path d="M3 12h2l1-5 2 10 2-12 2 14 2-10 2 6 1-3h4"/>',
-  pink:   '<path d="M3 12h3l1.5-4 2 8 2-9 2 9 2-6 1.5 2H21"/>',
-  brown:  '<path d="M3 13c2-3 3-3 5 0s3 3 5 0 3-3 5 0 2 2 3 1"/>',
-  bird:   '<path d="M4 15c3 0 5-2 6-5 1-3 4-4 6-3l3 1-3 1c0 5-4 9-12 6z"/>',
-  cup:    '<path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 10h2a2 2 0 0 1 0 4h-2"/><path d="M8 3v3M12 3v3"/>',
-  note:   '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  rain:    '<path d="M7 14.5a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 7a3.75 3.75 0 0 1 .25 7.5"/><path d="M8.5 17.5 7.5 20M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/>',
+  tinroof: '<path d="M2 9.5 12 4l10 5.5"/><path d="M4 10.5c1 1 2 1 3 0s2-1 3 0 2 1 3 0 2-1 3 0 2 1 3 0"/><path d="M6 14v1.5M11 14v3M16 14v2"/>',
+  thunder: '<path d="M7 13.5a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 6a3.75 3.75 0 0 1 .25 7.5"/><path d="m12.5 12-2.5 4h3.5L11 20.5"/>',
+  waves:   '<path d="M2 8.5c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 13.5c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 18.5c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/>',
+  wind:    '<path d="M3 8h10.5a2.75 2.75 0 1 0-2.75-2.75"/><path d="M3 12h15.5a2.75 2.75 0 1 1-2.75 2.75"/><path d="M3 16h7"/>',
+  birds:   '<path d="M3 12c2-2.5 4.5-2.5 6 0 1.5-2.5 4-2.5 6 0"/><path d="M13 7.5c1.2-1.5 2.8-1.5 3.8 0 1-1.5 2.6-1.5 3.7 0"/>',
+  stream:  '<path d="M5 3c3 3-1 6 2 9s-1 6 2 9"/><path d="M12 3c3 3-1 6 2 9s-1 6 2 9"/><path d="M19 3c3 3-1 6 2 9"/>',
+  fire:    '<path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-8.5z"/>',
+  crickets:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/><path d="M17 3.5v2M16 4.5h2M20.5 8v1.5M19.75 8.75h1.5"/>',
+  frogs:   '<path d="M3.5 15.5c0-3.6 3.8-6 8.5-6s8.5 2.4 8.5 6c0 2.4-3.8 3.5-8.5 3.5s-8.5-1.1-8.5-3.5z"/><circle cx="8" cy="8.5" r="2"/><circle cx="16" cy="8.5" r="2"/><path d="M3.5 17 2 19.5M20.5 17l1.5 2.5"/>',
+  fan:     '<circle cx="12" cy="12" r="1.6"/><path d="M12 10.4C12 6 9.2 3.8 7.2 4.8S6 9 12 10.4M13.6 12c4.4 0 6.6 2.8 5.6 4.8s-4.2 1.2-5.6-4.8M10.4 12.6C6.8 15 6.8 19 8.8 19.5s3.4-2.4 1.6-6.9"/>',
+  white:   '<path d="M2.5 12h2l1.2-5 2 10 2-12 2 14 2-10 2 6 1.3-3h4.5"/>',
+  pink:    '<path d="M2.5 12h3l1.5-4 2 8 2-9 2 9 2-6 1.5 2h5"/>',
+  brown:   '<path d="M2.5 13c2-3 3-3 5 0s3 3 5 0 3-3 5 0 2.5 2 4 1"/>',
 };
 
-// Order matters (tiles appear in this order). seconds = loop length (longer = less repetitive).
-const BUILTIN_SOUNDS = [
-  { id: "rain",   name: "Rain", bn: "বৃষ্টি",       icon: "rain",   seconds: 24 },
-  { id: "storm",  name: "Thunderstorm", bn: "বজ্রঝড়", icon: "storm", seconds: 45 },
-  { id: "waves",  name: "Waves", bn: "ঢেউ",      icon: "waves",  seconds: 36 },
-  { id: "wind",   name: "Wind", bn: "বাতাস",       icon: "wind",   seconds: 39 },
-  { id: "stream", name: "Stream", bn: "ঝর্ণা",     icon: "stream", seconds: 24 },
-  { id: "fire",   name: "Fireplace", bn: "আগুন",  icon: "fire",   seconds: 24 },
-  { id: "night",  name: "Night", bn: "রাত",      icon: "night",  seconds: 34 },
-  { id: "fan",    name: "Fan", bn: "ফ্যান",        icon: "fan",    seconds: 12 },
-  { id: "white",  name: "White noise", bn: "হোয়াইট নয়েজ", icon: "white", seconds: 8 },
-  { id: "pink",   name: "Pink noise", bn: "পিংক নয়েজ", icon: "pink",   seconds: 10 },
-  { id: "brown",  name: "Brown noise", bn: "ব্রাউন নয়েজ", icon: "brown", seconds: 12 },
+const SOUNDS = [
+  { id: "rain",     name: "Rain",        bn: "বৃষ্টি" },
+  { id: "tinroof",  name: "Tin roof",    bn: "টিনের চাল" },
+  { id: "thunder",  name: "Thunder",     bn: "বাজ" },
+  { id: "waves",    name: "Waves",       bn: "ঢেউ" },
+  { id: "wind",     name: "Wind",        bn: "বাতাস" },
+  { id: "birds",    name: "Birds",       bn: "পাখি" },
+  { id: "stream",   name: "Stream",      bn: "ঝর্ণা" },
+  { id: "fire",     name: "Fireplace",   bn: "আগুন" },
+  { id: "crickets", name: "Crickets",    bn: "ঝিঁঝিঁ" },
+  { id: "frogs",    name: "Frogs",       bn: "ব্যাঙ" },
+  { id: "fan",      name: "Fan",         bn: "ফ্যান" },
+  { id: "white",    name: "White noise", bn: "হোয়াইট নয়েজ" },
+  { id: "pink",     name: "Pink noise",  bn: "পিংক নয়েজ" },
+  { id: "brown",    name: "Brown noise", bn: "ব্রাউন নয়েজ" },
 ];
 
-const BUILTIN_PRESETS = [
-  { name: "Rainy study", bn: "বৃষ্টির দিনে পড়া",    mix: { rain: 0.65, brown: 0.25 } },
-  { name: "Ocean focus", bn: "সমুদ্রের পাড়ে",    mix: { waves: 0.7, wind: 0.2 } },
-  { name: "Cozy fireplace", bn: "আগুনের পাশে", mix: { fire: 0.7, rain: 0.35 } },
-  { name: "Summer night", bn: "গ্রীষ্মের রাত",   mix: { night: 0.55, stream: 0.3, wind: 0.15 } },
-  { name: "Deep focus", bn: "গভীর মনোযোগ",     mix: { brown: 0.55, fan: 0.3 } },
-  { name: "Storm outside", bn: "বাইরে ঝড়",  mix: { storm: 0.6, fire: 0.3 } },
+// Curated mixes. Sliders are 0..1 (shown as %); mood tints the scene.
+const MIXES = [
+  { id: "coxs",   name: "Cox's Bazar",  bn: "কক্সবাজার",    note: "Evening on the longest beach",        noteBn: "সবচেয়ে লম্বা সৈকতে সন্ধ্যা",   mix: { waves: 0.8, wind: 0.3 } },
+  { id: "borsha", name: "Borsha",       bn: "বর্ষা",         note: "Monsoon on a tin roof",               noteBn: "টিনের চালে বর্ষার দুপুর",       mix: { tinroof: 0.7, rain: 0.45, frogs: 0.3, thunder: 0.25 } },
+  { id: "kalbo",  name: "Kalboishakhi", bn: "কালবৈশাখী",    note: "A nor'wester rolls in",               noteBn: "বিকেলে কালবৈশাখী নামছে",        mix: { rain: 0.75, thunder: 0.6, wind: 0.55 } },
+  { id: "bhor",   name: "Village dawn", bn: "গ্রামের ভোর",   note: "Koel, doves and a quiet stream",      noteBn: "কোকিল, ঘুঘু আর ছোট্ট ঝর্ণা",     mix: { birds: 0.65, stream: 0.35, wind: 0.15 } },
+  { id: "sheet",  name: "Winter night", bn: "শীতের রাত",    note: "A warm fire, crickets outside",       noteBn: "আগুনের পাশে, বাইরে ঝিঁঝিঁ",      mix: { fire: 0.7, crickets: 0.3, wind: 0.2 } },
+  { id: "rraat",  name: "Rainy night",  bn: "বৃষ্টির রাত",   note: "Steady rain and the frogs' chorus",   noteBn: "টানা বৃষ্টি আর ব্যাঙের ডাক",     mix: { rain: 0.6, frogs: 0.45, crickets: 0.15 } },
+  { id: "hall",   name: "Hall room",    bn: "হলের রুম",     note: "Ceiling fan, nothing else. Study.",   noteBn: "মাথার উপর ফ্যান, আর কিছু না",    mix: { fan: 0.65, brown: 0.3 } },
+  { id: "deep",   name: "Deep work",    bn: "গভীর মনোযোগ",  note: "Brown noise to block the world out",  noteBn: "চারপাশ ঢেকে দেওয়া ব্রাউন নয়েজ", mix: { brown: 0.55, pink: 0.2 } },
 ];
