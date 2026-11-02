@@ -230,13 +230,13 @@ html[lang="bn"] h3.sub { letter-spacing: 0; text-transform: none; font-size: 13p
 .focus.clock-mode .progress, .focus.clock-mode .dots, .focus.clock-mode .actions, .focus.clock-mode .mode, .focus.sw-mode .dots { display: none; }
 
 /* music: optional, folded away */
-.group.music h3 { display: none; }
+.group.g-music h3 { display: none; }
 .music-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; border: 0; background: none; color: var(--ink-3); padding: 4px 0 8px; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
 html[lang="bn"] .music-toggle { letter-spacing: 0; text-transform: none; font-size: 13px; }
 .music-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; transition: transform .25s var(--ease); }
 .music-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
 .music-note { font-size: 12.5px; color: var(--ink-3); margin: 0 0 8px; }
-.q-muted .group.music .tile { opacity: .45; }
+.q-muted .group.g-music .tile { opacity: .45; }
 
 /* quran */
 .bismillah { font-family: "Amiri", "Scheherazade New", "Traditional Arabic", serif; font-size: 25px; text-align: center; margin: 0 0 14px; line-height: 1.9; }

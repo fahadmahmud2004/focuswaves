@@ -88,7 +88,7 @@
   function buildSounds() {
     groupsEl.innerHTML = "";
     for (const g of GROUPS) {
-      const sec = document.createElement("div"); sec.className = "group " + g.id;
+      const sec = document.createElement("div"); sec.className = "group g-" + g.id;
       sec.innerHTML = `<h3></h3><div class="tiles"></div>`; sec.querySelector("h3").textContent = nameOf(g);
       if (g.id === "music") {
         const open = store.get("musicOpen", false) || SOUNDS.some(s => s.group === "music" && state[s.id].on);
