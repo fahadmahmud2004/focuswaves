@@ -338,13 +338,19 @@
   $("#qUnderLvlWrap").hidden = !qUnder.checked;
 
   const quranActive = () => !qAudio.paused && !qAudio.ended;
+  let qSources = [], qSrcIdx = 0, qWantPlay = false, qBlocked = false;
+  // If the page's security policy blocks outside audio (e.g. an embedded preview), say so plainly.
+  document.addEventListener("securitypolicyviolation", e => {
+    if (/quranicaudio|islamic\.network/.test(e.blockedURI)) { qBlocked = true; qStatus(t("errBlocked")); }
+  });
   const pad3 = n => String(n).padStart(3, "0");
   const qStatus = t => ($("#qStatus").textContent = t || "");
 
   function loadSurah(autoplay) {
     const s = +surahSel.value, r = RECITERS[+recSel.value];
     store.set("surah", s); store.set("reciter", +recSel.value);
-    qAudio.src = `${QURAN_BASE}${r.path}/${pad3(s)}.mp3`;
+    qSources = quranSources(r, s); qSrcIdx = 0;
+    qAudio.src = qSources[0];
     const seek = $("#qSeek"); seek.value = 0; setP(seek);
     $("#qCur").textContent = $("#qDur").textContent = "0:00";
     $("#qminiTitle").textContent = `Surah ${SURAHS[s - 1]} · ${r.name}`;
@@ -356,9 +362,10 @@
     ensureCtx();
     if (playing && !qUnder.checked) setPlaying(false);
     qStatus(t("loading"));
-    qAudio.play().catch(err => { if (err.name !== "AbortError") qStatus(t("errPlay")); });
+    qWantPlay = true;
+    qAudio.play().catch(err => { if (err.name === "NotAllowedError") qStatus(t("errPlay")); });
   }
-  function pauseQuran() { if (quranActive()) qAudio.pause(); }
+  function pauseQuran() { qWantPlay = false; if (quranActive()) qAudio.pause(); }
 
   $("#qPlay").addEventListener("click", () => (quranActive() ? pauseQuran() : playQuran()));
   $("#qminiToggle").addEventListener("click", () => (quranActive() ? pauseQuran() : playQuran()));
@@ -384,7 +391,16 @@
   qAudio.addEventListener("playing", () => qStatus(""));
   qAudio.addEventListener("waiting", () => qStatus(t("buffering")));
   qAudio.addEventListener("pause", () => { qState(); if (!playing) keepAlive.pause(); });
-  qAudio.addEventListener("error", () => { qState(); if (qAudio.getAttribute("src")) qStatus(t("errLoad")); });
+  qAudio.addEventListener("error", () => {
+    if (!qAudio.getAttribute("src")) return;
+    // try the next source for the same surah before giving up
+    if (qSrcIdx < qSources.length - 1) {
+      qAudio.src = qSources[++qSrcIdx];
+      if (qWantPlay) qAudio.play().catch(() => {});
+      return;
+    }
+    qState(); qStatus(t(qBlocked ? "errBlocked" : "errLoad"));
+  });
   qAudio.addEventListener("loadedmetadata", () => ($("#qDur").textContent = fmt(qAudio.duration)));
   qAudio.addEventListener("timeupdate", () => {
     $("#qCur").textContent = fmt(qAudio.currentTime);
