@@ -15,9 +15,15 @@
   const anyOn = () => SOUNDS.some(s => state[s.id].on);
   const currentMix = () => Object.fromEntries(SOUNDS.filter(s => state[s.id].on).map(s => [s.id, +state[s.id].vol.toFixed(2)]));
 
+  const MUSIC = new Set(SOUNDS.filter(s => s.group === "music").map(s => s.id));
+  const quranOn = () => qWant || quranActive();          // music never plays alongside the Quran
   function sync() {
-    const vol = {}, lv = {};
-    for (const s of SOUNDS) { const st = state[s.id], v = st.on ? st.vol : 0; vol[s.id] = playing ? v * v : 0; lv[s.id] = playing || !started ? v : 0; }
+    const vol = {}, lv = {}, q = quranOn();
+    for (const s of SOUNDS) {
+      const st = state[s.id], v = st.on && !(q && MUSIC.has(s.id)) ? st.vol : 0;
+      vol[s.id] = playing ? v * v : 0; lv[s.id] = playing || !started ? v : 0;
+    }
+    document.body.classList.toggle("q-muted", q);
     Audio_.setVolumes(vol); Scene.set(lv);
     store.set("mix", currentMix()); store.set("activeMix", activeMix);
     paintDockMix(); if (!$("#p-mixes").hidden) markActiveMix();
@@ -56,15 +62,43 @@
   }
   $$("[data-panel]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.panel)));
   document.addEventListener("pointerdown", e => { if (openName && !e.target.closest(".panel, .dock, .toast")) openPanel(null); });
-  $("#clock").addEventListener("click", () => openPanel("timer"));
+  /* ---- the clock block can be resized and dragged anywhere; a plain click opens the Clock panel ---- */
+  const focusBox = $("#focus"), L0 = Object.assign({ x: 0, y: 0, s: 1 }, store.get("layout", {}));
+  const applyLayout = () => { focusBox.style.setProperty("--fx", L0.x + "px"); focusBox.style.setProperty("--fy", L0.y + "px"); focusBox.style.setProperty("--fs", L0.s); };
+  const clampLayout = () => { const mx = innerWidth / 2 - 60, my = innerHeight / 2 - 60; L0.x = Math.max(-mx, Math.min(mx, L0.x)); L0.y = Math.max(-my, Math.min(my, L0.y)); };
+  { let drag = null;
+    const ck = $("#clock");
+    ck.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, ox: L0.x, oy: L0.y, moved: false }; ck.setPointerCapture(e.pointerId); });
+    ck.addEventListener("pointermove", e => {
+      if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.moved && Math.hypot(dx, dy) < 6) return;
+      drag.moved = true; focusBox.classList.add("dragging"); L0.x = drag.ox + dx; L0.y = drag.oy + dy; clampLayout(); applyLayout();
+    });
+    ck.addEventListener("pointerup", () => { if (!drag) return; const moved = drag.moved; drag = null; focusBox.classList.remove("dragging"); if (moved) store.set("layout", L0); else openPanel("clock"); });
+    ck.addEventListener("pointercancel", () => { drag = null; focusBox.classList.remove("dragging"); });
+  }
+  const sizeIn = $("#clockSize"); sizeIn.value = L0.s; setP(sizeIn);
+  sizeIn.addEventListener("input", () => { L0.s = +sizeIn.value; setP(sizeIn); applyLayout(); store.set("layout", L0); });
+  $("#layoutReset").addEventListener("click", () => { Object.assign(L0, { x: 0, y: 0, s: 1 }); sizeIn.value = 1; setP(sizeIn); applyLayout(); store.set("layout", L0); });
+  addEventListener("resize", () => { clampLayout(); applyLayout(); });
+  applyLayout();
 
   /* ============================ SOUNDS PANEL ============================ */
   const groupsEl = $("#soundGroups"), tileOf = id => groupsEl.querySelector(`[data-id="${id}"]`);
   function buildSounds() {
     groupsEl.innerHTML = "";
     for (const g of GROUPS) {
-      const sec = document.createElement("div"); sec.className = "group";
+      const sec = document.createElement("div"); sec.className = "group " + g.id;
       sec.innerHTML = `<h3></h3><div class="tiles"></div>`; sec.querySelector("h3").textContent = nameOf(g);
+      if (g.id === "music") {
+        const open = store.get("musicOpen", false) || SOUNDS.some(s => s.group === "music" && state[s.id].on);
+        const btn = document.createElement("button"); btn.className = "music-toggle"; btn.setAttribute("aria-expanded", open);
+        btn.innerHTML = `<span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>`; btn.querySelector("span").textContent = t("musicOpt");
+        const note = document.createElement("p"); note.className = "music-note"; note.textContent = t("musicNote");
+        const tiles = sec.querySelector(".tiles"); tiles.hidden = note.hidden = !open;
+        btn.onclick = () => { const o = btn.getAttribute("aria-expanded") !== "true"; btn.setAttribute("aria-expanded", o); tiles.hidden = note.hidden = !o; store.set("musicOpen", o); };
+        sec.insertBefore(note, tiles); sec.insertBefore(btn, note);
+      }
       for (const s of SOUNDS.filter(x => x.group === g.id)) {
         const el = document.createElement("div"); el.className = "tile"; el.dataset.id = s.id;
         el.innerHTML = `<button class="tile-btn" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[s.id]}</svg><span></span></button><input type="range" min="0" max="1" step="0.01">`;
@@ -87,6 +121,7 @@
   function toggle(id) {
     const st = state[id]; st.on = !st.on; activeMix = null;
     if (st.on && st.vol < 0.06) st.vol = 0.5;
+    if (st.on && MUSIC.has(id) && quranOn()) toast(t("musicPausedQ"));
     paintTile(id);
     if (st.on && !playing && started) setPlaying(true); else if (!anyOn() && playing) setPlaying(false); else sync();
   }
@@ -98,6 +133,7 @@
   function applyMix(mix, id, start = true) {
     for (const s of SOUNDS) { const v = mix[s.id]; state[s.id].on = v > 0; if (v > 0) state[s.id].vol = v; paintTile(s.id); }
     activeMix = id || null;
+    if (start && quranOn() && Object.keys(mix).some(k => MUSIC.has(k))) toast(t("musicPausedQ"));
     if (start && started && !playing) setPlaying(true); else sync();
   }
   $("#clearBtn").addEventListener("click", () => { SOUNDS.forEach(s => { state[s.id].on = false; paintTile(s.id); }); activeMix = null; if (playing) setPlaying(false); else sync(); });
@@ -111,7 +147,7 @@
   $("#playBtn").addEventListener("click", () => setPlaying(!playing));
 
   /* ============================ MIXES ============================ */
-  let mixFilter = "all";
+  let mixFilter = "nature";
   const userMixes = () => store.get("presets", []);
   const artOf = m => m.art || ["#8fa3b3", "#24323e"];
   const artCss = a => `linear-gradient(180deg, ${a[0]} 0%, ${a[0]} 50%, ${a[1]} 56%, ${a[1]} 100%)`;
@@ -127,11 +163,12 @@
     $("#mixArt").style.background = artCss(m ? m.art : ["#56677a", "#1f2a35"]);
   }
   function renderMixes() {
-    const cats = [["all", "all"], ["nature", "nature"], ["music", "music"], ["focus", "focusCat"]];
+    const cats = [["nature", "nature"], ["focus", "focusCat"], ["music", "music"]];
     if (userMixes().length) cats.push(["yours", "yours"]);
     const f = $("#mixFilters"); f.innerHTML = "";
     cats.forEach(([id, key]) => { const b = document.createElement("button"); b.textContent = t(key); b.setAttribute("aria-pressed", mixFilter === id); b.onclick = () => { mixFilter = id; renderMixes(); }; f.appendChild(b); });
     const grid = $("#mixGrid"); grid.innerHTML = "";
+    if (mixFilter === "music") { const n = document.createElement("p"); n.className = "music-note"; n.style.gridColumn = "1 / -1"; n.textContent = t("musicNote"); grid.appendChild(n); }
     const card = (name, note, mix, art, id, del) => {
       const c = document.createElement("button"); c.className = "mcard"; c.dataset.id = id;
       c.innerHTML = `<div class="m-art"><div class="ico">${Object.keys(mix).slice(0, 4).map(k => `<svg viewBox="0 0 24 24">${ICONS[k]}</svg>`).join("")}</div></div><div class="m-body"><b></b><span></span></div>`;
@@ -141,9 +178,9 @@
       if (del) { const x = document.createElement("span"); x.className = "x"; x.setAttribute("role", "button"); x.setAttribute("aria-label", "Delete " + name); x.textContent = "×"; x.onclick = del; c.appendChild(x); }
       grid.appendChild(c);
     };
-    if (mixFilter !== "yours") MIXES.filter(m => mixFilter === "all" || m.cat === mixFilter).forEach(m => card(nameOf(m), LANG === "bn" ? m.noteBn : m.note, m.mix, m.art, m.id));
-    if (mixFilter === "all" || mixFilter === "yours") userMixes().forEach((u, i) => card(u.name, Object.keys(u.mix).map(k => nameOf(soundById(k))).join(" · "), u.mix, artOf(u), "u:" + u.name,
-      () => { const all = userMixes(); all.splice(i, 1); store.set("presets", all); if (activeMix === "u:" + u.name) activeMix = null; if (!all.length) mixFilter = "all"; renderMixes(); paintDockMix(); }));
+    if (mixFilter !== "yours") MIXES.filter(m => m.cat === mixFilter).forEach(m => card(nameOf(m), LANG === "bn" ? m.noteBn : m.note, m.mix, m.art, m.id));
+    if (mixFilter === "yours") userMixes().forEach((u, i) => card(u.name, Object.keys(u.mix).map(k => nameOf(soundById(k))).join(" · "), u.mix, artOf(u), "u:" + u.name,
+      () => { const all = userMixes(); all.splice(i, 1); store.set("presets", all); if (activeMix === "u:" + u.name) activeMix = null; if (!all.length) mixFilter = "nature"; renderMixes(); paintDockMix(); }));
     markActiveMix();
   }
   const markActiveMix = () => $$("#mixGrid .mcard").forEach(c => c.classList.toggle("active", c.dataset.id === activeMix));
@@ -200,8 +237,25 @@
   intent.addEventListener("input", () => store.set("intent", intent.value));
   intent.addEventListener("keydown", e => { if (e.key === "Enter") { intent.blur(); if (!F.running) focusBtn.click(); } });
   function paint() {
+    const digits = s => (face === "bangla" ? bnDigits(s) : s);
+    if (CM === "clock") {
+      const d = new Date(), H = d.getHours(), M = String(d.getMinutes()).padStart(2, "0");
+      clock.textContent = digits(h24.checked ? `${String(H).padStart(2, "0")}:${M}` : `${H % 12 || 12}:${M}`);
+      const g = d.toLocaleDateString(LANG === "bn" ? "bn-BD" : "en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      const extra = [banglaDate(d), hijriDate(d)].filter(Boolean).join("  ·  ");
+      const dl = $("#dateLine"); if (dl.dataset.k !== g + extra) { dl.dataset.k = g + extra; dl.innerHTML = ""; [g, extra].forEach(x => { const s = document.createElement("span"); s.textContent = x; dl.appendChild(s); }); }
+      document.title = t("title"); return;
+    }
+    if (CM === "stopwatch") {
+      const e = swElapsed();
+      clock.textContent = digits(fmt(Math.floor(e)));
+      $("#modeLabel").textContent = t("stopwatch"); $("#modeLabel").classList.remove("break"); focusEl.classList.remove("break-mode");
+      $("#progFill").style.width = ((e % 60) / 60) * 100 + "%";
+      focusBtn.textContent = t(SW.running ? "pause" : e > 0 ? "resume" : "startSW");
+      resetBtn.hidden = e === 0; document.title = SW.running ? `${fmt(Math.floor(e))} · ${intent.value || t("stopwatch")}` : t("title"); return;
+    }
     const TT = total();
-    clock.textContent = fmt(F.remaining);
+    clock.textContent = digits(fmt(F.remaining));
     $("#progFill").style.width = (1 - F.remaining / TT) * 100 + "%";
     const ml = $("#modeLabel");
     ml.textContent = F.mode === "focus" ? t("focus") : `${t(F.mode === "long" ? "longBreak" : "break")} · ${t("breakHint")}`;
@@ -234,15 +288,77 @@
       toast(t("breakOver")); notify(t("nBreak"), t("nBreakB")); paint();
     }
   }
-  focusBtn.addEventListener("click", () => { if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {}); F.running ? pauseTimer() : startTimer(); });
-  resetBtn.addEventListener("click", () => { clearInterval(F.iv); F.running = false; F.mode = "focus"; F.remaining = total(); lockWake(false); unZen(); paint(); });
+  focusBtn.addEventListener("click", () => {
+    if (CM === "stopwatch") return SW.running ? swPause() : swStart();
+    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {});
+    F.running ? pauseTimer() : startTimer();
+  });
+  resetBtn.addEventListener("click", () => { if (CM === "stopwatch") return swReset(); clearInterval(F.iv); F.running = false; F.mode = "focus"; F.remaining = total(); lockWake(false); unZen(); paint(); });
   function notify(title, body) { if (document.hidden && "Notification" in window && Notification.permission === "granted") try { new Notification(title, { body, icon: "brand/icon-192.png", silent: true }); } catch {} }
+
+  /* ---- clock modes: timer, stopwatch, clock ---- */
+  let CM = store.get("cmode", "timer");
+  const SW = { running: false, startAt: 0, acc: store.get("swAcc", 0), logged: 0 };
+  const swElapsed = () => SW.acc + (SW.running ? (Date.now() - SW.startAt) / 1000 : 0);
+  const h24 = $("#h24"); h24.checked = store.get("h24", !/am|pm/i.test(new Date(2020, 0, 1, 15).toLocaleTimeString()));
+  h24.addEventListener("change", () => { store.set("h24", h24.checked); paint(); });
+  const BN = "০১২৩৪৫৬৭৮৯", bnDigits = s => String(s).replace(/\d/g, d => BN[d]);
+  function banglaDate(d) {         // Bangladesh's revised Bangla calendar (Pohela Boishakh = 14 April)
+    const y = d.getFullYear(), sy = d >= new Date(y, 3, 14) ? y : y - 1;
+    let days = Math.round((Date.UTC(y, d.getMonth(), d.getDate()) - Date.UTC(sy, 3, 14)) / 864e5);
+    const leap = (sy + 1) % 4 === 0 && ((sy + 1) % 100 !== 0 || (sy + 1) % 400 === 0);
+    const len = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, leap ? 30 : 29, 30];
+    let m = 0; while (days >= len[m]) days -= len[m++];
+    const MB = ["বৈশাখ", "জ্যৈষ্ঠ", "আষাঢ়", "শ্রাবণ", "ভাদ্র", "আশ্বিন", "কার্তিক", "অগ্রহায়ণ", "পৌষ", "মাঘ", "ফাল্গুন", "চৈত্র"];
+    const ME = ["Boishakh", "Joishtho", "Asharh", "Srabon", "Bhadro", "Ashwin", "Kartik", "Ogrohayon", "Poush", "Magh", "Falgun", "Choitro"];
+    return LANG === "bn" ? `${bnDigits(days + 1)} ${MB[m]} ${bnDigits(sy - 593)}` : `${days + 1} ${ME[m]} ${sy - 593}`;
+  }
+  function hijriDate(d) { try { return new Intl.DateTimeFormat(LANG === "bn" ? "bn-BD-u-ca-islamic-umalqura" : "en-u-ca-islamic-umalqura", { day: "numeric", month: "long", year: "numeric" }).format(d).replace(/\s?(AH|যুগ)$/, ""); } catch { return ""; } }
+  function setMode(m) {
+    if (m === CM) return;
+    if (CM === "stopwatch" && SW.running) swPause();
+    CM = m; store.set("cmode", m); paintMode(); paint(); armZen();
+  }
+  function paintMode() {
+    $$("#modeSeg button").forEach(b => b.setAttribute("aria-checked", b.dataset.v === CM));
+    $("#timerOpts").hidden = CM !== "timer"; $("#clockOpts").hidden = CM !== "clock";
+    focusEl.classList.toggle("clock-mode", CM === "clock"); focusEl.classList.toggle("sw-mode", CM === "stopwatch");
+    $("#dateLine").hidden = CM !== "clock"; intent.hidden = CM === "clock";
+  }
+  $$("#modeSeg button").forEach(b => b.addEventListener("click", () => setMode(b.dataset.v)));
+  function swStart() { SW.running = true; SW.startAt = Date.now(); lockWake(true); if (!playing && !quranActive() && started) setPlaying(true); paint(); armZen(); }
+  function swPause() { SW.acc = swElapsed(); SW.running = false; store.set("swAcc", SW.acc); lockWake(false); swLog(); paint(); unZen(); }
+  function swLog() { const m = Math.floor(SW.acc / 60) - SW.logged; if (m > 0) { logMinutes(m); SW.logged += m; } }
+  function swReset() { if (SW.running) swPause(); SW.acc = 0; SW.logged = 0; store.set("swAcc", 0); paint(); }
+  setInterval(() => { if (CM !== "timer") paint(); }, 250);
+
+  const FACES = [["bold"], ["serif", "Instrument+Serif"], ["thin", "Inter:wght@200"], ["mono", "JetBrains+Mono:wght@300"], ["round", "Fredoka:wght@500"], ["outline"], ["bangla", "Tiro+Bangla"], ["dot", "Doto:wght@700"]];
+  let face = store.get("face", "bold");
+  const loaded = new Set();
+  const loadFont = f => { if (!f || loaded.has(f)) return; loaded.add(f); const l = document.createElement("link"); l.rel = "stylesheet"; l.href = `https://fonts.googleapis.com/css2?family=${f}&display=swap`; document.head.appendChild(l); };
+  function buildFaces() {
+    const box = $("#faces"); box.innerHTML = "";
+    FACES.forEach(([id, font]) => {
+      const b = document.createElement("button"); b.dataset.face = id; b.setAttribute("aria-pressed", id === face);
+      b.innerHTML = `<b>${id === "bangla" ? "১২:৩০" : "12:30"}</b><small></small>`; b.querySelector("small").textContent = t("faceNames")[id];
+      b.onclick = () => { face = id; store.set("face", id); loadFont(font); clock.dataset.face = id; buildFaces(); paint(); };
+      box.appendChild(b);
+    });
+  }
+  loadFont((FACES.find(f => f[0] === face) || [])[1]); clock.dataset.face = face;
+
+  const SKY = { auto: null, dawn: 6.5, day: 12, dusk: 18.3, night: 23 };
+  let sky = store.get("sky", "auto");
+  const paintSky = () => { $$("#skySeg button").forEach(b => b.setAttribute("aria-checked", b.dataset.v === sky)); Scene.setHour(SKY[sky] ?? null); };
+  $$("#skySeg button").forEach(b => b.addEventListener("click", () => { sky = b.dataset.v; store.set("sky", sky); paintSky(); }));
+  paintSky();
 
   /* ---- zen (automatic, while focusing and idle) and hide (manual) ---- */
   let zenT, hintT;
   const unZen = () => { clearTimeout(zenT); document.body.classList.remove("zen"); };
-  function armZen() { unZen(); if (F.running && F.mode === "focus" && !openName) zenT = setTimeout(() => { if (document.activeElement !== intent && !openName) document.body.classList.add("zen"); }, 5000); }
-  ["pointermove", "pointerdown", "keydown", "touchstart"].forEach(ev => addEventListener(ev, () => F.running && !uiOff && armZen(), { passive: true }));
+  const focusing = () => CM === "clock" || (CM === "stopwatch" && SW.running) || (CM === "timer" && F.running && F.mode === "focus");
+  function armZen() { unZen(); if (focusing() && !openName) zenT = setTimeout(() => { if (document.activeElement !== intent && !openName) document.body.classList.add("zen"); }, 5000); }
+  ["pointermove", "pointerdown", "keydown", "touchstart"].forEach(ev => addEventListener(ev, () => focusing() && !uiOff && armZen(), { passive: true }));
   let uiOff = false;
   function hideUI() {
     openPanel(null); uiOff = true; document.body.classList.add("ui-off");
@@ -300,13 +416,13 @@
     if (graphOK === null) graphOK = Audio_.attachQuran(qA);
     if (!graphOK && cur === qA) { attempts = attempts.filter(a => a.el === qB); attemptIdx = 0; useAttempt(); }
     Audio_.resume(); keepAlive.play().catch(() => {});
-    qStatus(t("loading")); qWant = true; armTimeout();
+    qStatus(t("loading")); qWant = true; sync(); armTimeout();
     cur.play().catch(err => { if (err.name === "NotAllowedError") qStatus(t("errPlay")); });
   }
-  function pauseQuran() { qWant = false; [qA, qB].forEach(el => el.pause()); }
+  function pauseQuran() { qWant = false; [qA, qB].forEach(el => el.pause()); sync(); }
   const qState = () => {
     document.body.classList.toggle("q-playing", quranActive());
-    applyDuck(); mediaMeta();
+    applyDuck(); mediaMeta(); sync();
   };
   [qA, qB].forEach(el => {
     const mine = f => e => { if (e.target === cur) f(e); };
@@ -319,7 +435,7 @@
       clearTimeout(qTimer);
       if (!cur.getAttribute("src") || cur.readyState >= 3) return;
       if (attemptIdx < attempts.length - 1) { cur.pause(); attemptIdx++; useAttempt(); if (qWant) { armTimeout(); cur.play().catch(() => {}); } return; }
-      qState(); qStatus(t(qBlocked ? "errBlocked" : "errLoad"));
+      qWant = false; qState(); qStatus(t(qBlocked ? "errBlocked" : "errLoad"));
     }));
     el.addEventListener("loadedmetadata", mine(() => ($("#qDur").textContent = fmt(cur.duration))));
     el.addEventListener("timeupdate", mine(() => { $("#qCur").textContent = fmt(cur.currentTime); if (cur.duration) { const s = $("#qSeek"); s.value = cur.currentTime / cur.duration * 100; setP(s); } }));
@@ -356,11 +472,11 @@
     else if (e.key === "h") hideUI();
     else if (e.key === "m") openPanel("mixes");
     else if (e.key === "s") openPanel("sounds");
-    else if (e.key === "t") openPanel("timer");
+    else if (e.key === "t" || e.key === "c") openPanel("clock");
   });
 
   function relabel() {
-    applyI18n(); buildSounds(); OPTS.forEach(o => buildOpts(...o)); if (openName === "mixes") renderMixes();
+    applyI18n(); buildSounds(); buildFaces(); OPTS.forEach(o => buildOpts(...o)); if (openName === "mixes") renderMixes();
     paintDockMix(); paint(); paintStats(); sharedNote(); applyQuranOut();
     $("#playBtn").setAttribute("aria-label", t(playing ? "pauseSounds" : "play"));
   }
@@ -408,6 +524,6 @@
   else if (saved && Object.keys(saved).length) applyMix(saved, store.get("activeMix", null), false);
   else applyMix(MIXES[0].mix, MIXES[0].id, false);
   if (cur && !cur.getAttribute("src")) { attempts = quranSources(RECITERS[+recSel.value], +surahSel.value).flatMap(url => [{ url, el: qA }, { url, el: qB }]); attemptIdx = 0; }
-  F.remaining = total(); paint();
+  F.remaining = total(); paintMode(); paint();
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js");
 })();

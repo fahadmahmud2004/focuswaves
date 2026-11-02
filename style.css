@@ -190,6 +190,54 @@ html[lang="bn"] .m-body b { font-family: "Hind Siliguri", sans-serif; font-weigh
 .t-opts input::-webkit-outer-spin-button, .t-opts input::-webkit-inner-spin-button { -webkit-appearance: none; }
 .panel .switch { margin-top: 12px; }
 
+/* clock panel */
+.seg.wide { display: flex; width: 100%; }
+.seg.wide button { flex: 1; padding: 7px 6px; }
+h3.sub { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin: 16px 0 8px; }
+html[lang="bn"] h3.sub { letter-spacing: 0; text-transform: none; font-size: 13px; }
+.faces { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.faces button { border: 1px solid transparent; background: var(--ink-4); border-radius: 14px; padding: 10px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--ink-2); transition: border-color .2s, background .2s; }
+.faces button b { font-size: 24px; line-height: 1.1; color: var(--ink); font-weight: inherit; }
+.faces button small { font-size: 11px; }
+.faces button[aria-pressed="true"] { border-color: var(--ink); background: rgba(255,253,240,.14); }
+.hint.flush { margin-left: 0; }
+#timerOpts { margin-top: 8px; }
+
+/* size + position (drag the clock) */
+.focus { --fx: 0px; --fy: 0px; --fs: 1; }
+.focus-in { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; translate: var(--fx) var(--fy); scale: var(--fs); transition: scale .2s var(--ease); }
+.focus.dragging .focus-in { transition: none; }
+.clock { touch-action: none; user-select: none; -webkit-user-select: none; }
+.focus.dragging .clock { cursor: grabbing; }
+.size-row { display: flex; align-items: center; gap: 10px; color: var(--ink-2); }
+.size-row input { flex: 1; }
+.size-row span { font-size: 12px; } .size-row .big-a { font-size: 18px; }
+
+/* clock faces */
+.clock[data-face="bold"], .faces [data-face="bold"] b { font-family: var(--display); font-weight: 800; letter-spacing: -.05em; }
+.clock[data-face="serif"], .faces [data-face="serif"] b { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; letter-spacing: -.02em; }
+.clock[data-face="thin"], .faces [data-face="thin"] b { font-family: Inter, system-ui, sans-serif; font-weight: 200; letter-spacing: -.04em; }
+.clock[data-face="mono"], .faces [data-face="mono"] b { font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 300; letter-spacing: -.06em; }
+.clock[data-face="round"], .faces [data-face="round"] b { font-family: Fredoka, "Hind Siliguri", sans-serif; font-weight: 500; letter-spacing: -.02em; }
+.clock[data-face="outline"], .faces [data-face="outline"] b { font-family: var(--display); font-weight: 800; letter-spacing: -.04em; color: transparent; -webkit-text-stroke: 2px var(--ink); }
+.faces [data-face="outline"] b { -webkit-text-stroke: 1px var(--ink); }
+.clock[data-face="bangla"], .faces [data-face="bangla"] b { font-family: "Tiro Bangla", "Hind Siliguri", serif; font-weight: 400; letter-spacing: 0; }
+.clock[data-face="dot"], .faces [data-face="dot"] b { font-family: "Doto", "JetBrains Mono", monospace; font-weight: 700; letter-spacing: -.02em; }
+.clock[data-face="serif"], .clock[data-face="bangla"] { line-height: 1.05; }
+.clock[data-face="outline"] { -webkit-text-stroke: 3px var(--ink); text-shadow: none; }
+.date-line { font-size: clamp(15px, 2vw, 19px); color: var(--ink-2); margin-top: 6px; text-shadow: 0 1px 12px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: 2px; }
+.date-line span:first-child { color: var(--ink); }
+.focus.clock-mode .progress, .focus.clock-mode .dots, .focus.clock-mode .actions, .focus.clock-mode .mode, .focus.sw-mode .dots { display: none; }
+
+/* music: optional, folded away */
+.group.music h3 { display: none; }
+.music-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; border: 0; background: none; color: var(--ink-3); padding: 4px 0 8px; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+html[lang="bn"] .music-toggle { letter-spacing: 0; text-transform: none; font-size: 13px; }
+.music-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; transition: transform .25s var(--ease); }
+.music-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.music-note { font-size: 12.5px; color: var(--ink-3); margin: 0 0 8px; }
+.q-muted .group.music .tile { opacity: .45; }
+
 /* quran */
 .bismillah { font-family: "Amiri", "Scheherazade New", "Traditional Arabic", serif; font-size: 25px; text-align: center; margin: 0 0 14px; line-height: 1.9; }
 .q-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

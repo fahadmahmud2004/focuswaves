@@ -49,17 +49,18 @@
   </div>
 </header>
 
-<main class="focus" id="focus">
+<main class="focus" id="focus"><div class="focus-in">
   <input id="intent" class="intent" type="text" maxlength="60" data-t-ph="intent" data-t-aria="intent" autocomplete="off">
   <div class="mode" id="modeLabel">Focus</div>
-  <div class="clock" id="clock" role="timer">25:00</div>
+  <div class="clock" id="clock" role="timer" data-face="bold">25:00</div>
+  <div class="date-line" id="dateLine" hidden></div>
   <div class="progress" aria-hidden="true"><div id="progFill"></div></div>
   <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <div class="actions">
     <button id="focusBtn" class="primary">Start focus</button>
     <button id="resetBtn" class="round ghosted" data-t-aria="reset" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></button>
   </div>
-</main>
+</div></main>
 
 <!-- ============ PANELS (one open at a time, floating above the dock) ============ -->
 <div class="panels" id="panels">
@@ -93,13 +94,32 @@
     </div>
   </section>
 
-  <section class="panel narrow" id="p-timer" hidden>
-    <div class="p-head"><h2 data-t="timer">Timer</h2></div>
-    <div class="t-row"><span class="t-label" data-t="focusLen">Focus</span><div class="t-opts" id="optFocus"></div></div>
-    <div class="t-row"><span class="t-label" data-t="shortLen">Short break</span><div class="t-opts" id="optShort"></div></div>
-    <div class="t-row"><span class="t-label" data-t="longLen">Long break</span><div class="t-opts" id="optLong"></div></div>
-    <label class="switch"><input type="checkbox" id="autoBreak" checked><span></span><em data-t="autoBreak">Start breaks automatically</em></label>
-    <p class="hint" data-t="cycleHint">Every 4th break is a long one.</p>
+  <section class="panel narrow" id="p-clock" hidden>
+    <div class="p-head"><h2 data-t="clockTitle">Clock</h2></div>
+    <div class="seg wide" id="modeSeg" role="radiogroup" data-t-aria="clockTitle">
+      <button role="radio" data-v="timer" data-t="modeTimer">Timer</button><button role="radio" data-v="stopwatch" data-t="modeStopwatch">Stopwatch</button><button role="radio" data-v="clock" data-t="modeClock">Clock</button>
+    </div>
+    <h3 class="sub" data-t="face">Face</h3>
+    <div class="faces" id="faces"></div>
+    <div id="timerOpts">
+      <div class="t-row"><span class="t-label" data-t="focusLen">Focus</span><div class="t-opts" id="optFocus"></div></div>
+      <div class="t-row"><span class="t-label" data-t="shortLen">Short break</span><div class="t-opts" id="optShort"></div></div>
+      <div class="t-row"><span class="t-label" data-t="longLen">Long break</span><div class="t-opts" id="optLong"></div></div>
+      <label class="switch"><input type="checkbox" id="autoBreak" checked><span></span><em data-t="autoBreak">Start breaks automatically</em></label>
+      <p class="hint" data-t="cycleHint">Every 4th break is a long one.</p>
+    </div>
+    <div id="clockOpts" hidden>
+      <label class="switch"><input type="checkbox" id="h24"><span></span><em data-t="h24">24-hour clock</em></label>
+    </div>
+    <h3 class="sub" data-t="layout">Size and position</h3>
+    <div class="size-row"><span>A</span><input id="clockSize" type="range" min="0.5" max="1.5" step="0.01" value="1" data-t-aria="size"><span class="big-a">A</span>
+      <button class="text-btn" id="layoutReset" data-t="resetPos">Reset</button></div>
+    <p class="hint flush" data-t="dragHint">Drag the clock to move it anywhere.</p>
+    <h3 class="sub" data-t="sky">Sky</h3>
+    <div class="seg wide" id="skySeg" role="radiogroup" data-t-aria="sky">
+      <button role="radio" data-v="auto" data-t="auto">Auto</button><button role="radio" data-v="dawn" data-t="dawn">Dawn</button><button role="radio" data-v="day" data-t="day">Day</button><button role="radio" data-v="dusk" data-t="dusk">Dusk</button><button role="radio" data-v="night" data-t="night">Night</button>
+    </div>
+    <p class="hint flush" data-t="skyHint">Auto follows the time where you are.</p>
   </section>
 
   <section class="panel narrow" id="p-quran" hidden>
@@ -145,7 +165,7 @@
   </button>
   <span class="dock-sep" aria-hidden="true"></span>
   <button class="dk" data-panel="sounds" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M12 4v16M19 4v16"/><circle cx="5" cy="14" r="2.2"/><circle cx="12" cy="8" r="2.2"/><circle cx="19" cy="16" r="2.2"/></svg><span data-t="sounds">Sounds</span></button>
-  <button class="dk" data-panel="timer" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg><span data-t="timer">Timer</span></button>
+  <button class="dk" data-panel="clock" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg><span data-t="clockTitle">Clock</span></button>
   <button class="dk" data-panel="quran" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5z"/><path d="M12 6v13.5"/></svg><span data-t="quran">Quran</span><i class="live-dot"></i></button>
   <button class="dk" id="hideBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10.7 10.7 0 0 1 12 5c5.5 0 9 7 9 7a16 16 0 0 1-2.7 3.6M6.6 6.6C4.1 8.3 3 12 3 12s3.5 7 9 7a9.6 9.6 0 0 0 4.4-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg><span data-t="hide">Hide</span></button>
 </nav>

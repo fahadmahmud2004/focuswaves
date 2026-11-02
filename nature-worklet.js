@@ -457,6 +457,91 @@ class Noise {
   }
 }
 
+/* ---- extra nature voices ---- */
+class Gulls {            // seagulls: a few "kee-ow" calls, near and far, now and then
+  constructor(p) { this.p = p; this.calls = []; this.wait = rand(1, 5) * SR; this.lp = [new LP(7000), new LP(7000)]; }
+  render(n, L, R, WL, WR) {
+    this.wait -= n;
+    if (this.wait <= 0) {
+      const dist = rand(0.2, 0.9), pan = rnd() * 0.8, k = 1 + ((Math.random() * 4) | 0), f0 = rand(1700, 2400);
+      for (let i = 0; i < k; i++) this.calls.push({ t: -((i * rand(0.28, 0.45)) * SR | 0), len: rand(0.22, 0.38) * SR, f0: f0 * rand(0.95, 1.05), f1: f0 * rand(0.55, 0.7), ph: 0, a: (1.1 - dist) * 0.06, g: panG(pan), dist });
+      if (Math.random() < 0.4) this.p.emit({ ev: "bird", x: pan });
+      this.wait = rand(4, 16) * SR;
+    }
+    for (let i = 0; i < n; i++) {
+      let l = 0, r = 0, w = 0;
+      for (const c of this.calls) {
+        if (c.t++ < 0) continue;
+        const x = c.t / c.len; if (x >= 1) continue;
+        const f = c.f0 + (c.f1 - c.f0) * x * x; c.ph += f / SR;
+        const env = Math.sin(Math.PI * Math.min(1, x * 1.3)) ** 1.5;
+        const y = (fsin(c.ph) + 0.5 * fsin(c.ph * 2) + 0.3 * fsin(c.ph * 3) + 0.15 * fsin(c.ph * 4) + rnd() * 0.15) * env * c.a;
+        l += y * c.g[0]; r += y * c.g[1]; w += y * c.dist;
+      }
+      L[i] += this.lp[0].run(l); R[i] += this.lp[1].run(r); WL[i] += w * 0.6; WR[i] += w * 0.6;
+    }
+    this.calls = this.calls.filter(c => c.t < c.len);
+  }
+}
+class Leaves {           // a canopy rustling as gusts pass through it
+  constructor() { this.pk = [new Pink(), new Pink()]; this.f = [new SVF(3200, 0.8), new SVF(3500, 0.8)]; this.g = new Drift(0.4, 0.3, 2.5); this.b = new Bursts(20); this.bp = new Poisson(6); this.bf = [new SVF(4200, 1.2), new SVF(4500, 1.2)]; }
+  render(n, L, R) {
+    const g = clamp(this.g.next(), 0.05, 1.1); this.bp.rate = 3 + 22 * g; this.f[0].set(2400 + 1800 * g); this.f[1].set(2600 + 1700 * g);
+    for (let i = 0; i < n; i++) {
+      if (this.bp.tick()) this.b.add(rand(800, 4000), rand(0.05, 0.16) * g, rnd(), 0.9995);
+      this.b.run(tmp);
+      L[i] += this.f[0].run(this.pk[0].run()) * 0.5 * g + this.bf[0].run(tmp[0]) * 0.6;
+      R[i] += this.f[1].run(this.pk[1].run()) * 0.5 * g + this.bf[1].run(tmp[1]) * 0.6;
+    }
+  }
+}
+class Cicadas {          // the summer-afternoon drone: buzzing swells that rise and fall
+  constructor() {
+    this.c = Array.from({ length: 4 }, () => this.make(true)); this.f = Array.from({ length: 4 }, () => new SVF(5000, 4));
+  }
+  make(any) { return { t: any ? rand(0, 8) * SR : 0, len: rand(5, 14) * SR, f: rand(3800, 6200), am: rand(90, 220), ph: 0, a: rand(0.04, 0.09), g: panG(rnd() * 0.9), rest: rand(1, 6) * SR }; }
+  render(n, L, R, WL, WR) {
+    this.c.forEach((c, k) => this.f[k].set(c.f, 5));
+    for (let i = 0; i < n; i++) {
+      let l = 0, r = 0;
+      this.c.forEach((c, k) => {
+        c.t++;
+        if (c.t > c.len + c.rest) { Object.assign(c, this.make(false)); this.f[k].set(c.f, 5); }
+        const x = c.t / c.len; if (x > 1) return;
+        const env = Math.sin(Math.PI * x) ** 0.6 * (x < 0.85 ? 1 : (1 - x) / 0.15);
+        c.ph += c.am / SR;
+        const y = this.f[k].run(rnd()) * (0.55 + 0.45 * fsin(c.ph)) * env * c.a * 3;
+        l += y * c.g[0]; r += y * c.g[1];
+      });
+      L[i] += l; R[i] += r; WL[i] += l * 0.2; WR[i] += r * 0.2;
+    }
+  }
+}
+class Owl {              // a spotted owlet / owl: soft "hoo ... hoo-hoo" from the trees
+  constructor() { this.wait = rand(3, 12) * SR; this.notes = []; this.lp = new LP(1200); }
+  render(n, L, R, WL, WR) {
+    this.wait -= n;
+    if (this.wait <= 0) {
+      const f = rand(330, 430), pan = rnd() * 0.8, dist = rand(0.3, 0.85), pat = Math.random() < 0.5 ? [0.45, 0.25, 0.3] : [0.5, 0.6];
+      let at = 0; const g = panG(pan);
+      pat.forEach((d, i) => { this.notes.push({ t: -(at * SR | 0), len: d * SR, f: f * (i === 0 ? 1 : 0.97), ph: 0, a: (1.1 - dist) * 0.12, g, dist }); at += d + rand(0.12, 0.3); });
+      this.wait = rand(14, 40) * SR;
+    }
+    for (let i = 0; i < n; i++) {
+      let l = 0, r = 0, w = 0;
+      for (const o of this.notes) {
+        if (o.t++ < 0) continue;
+        const x = o.t / o.len; if (x >= 1) continue;
+        o.ph += o.f * (1 + 0.012 * Math.sin(o.t / SR * 34)) / SR;
+        const env = Math.sin(Math.PI * x) ** 1.4, y = (fsin(o.ph) + 0.12 * fsin(o.ph * 2)) * env * o.a;
+        l += y * o.g[0]; r += y * o.g[1]; w += y * o.dist;
+      }
+      L[i] += l; R[i] += r; WL[i] += w * 0.9; WR[i] += w * 0.9;
+    }
+    this.notes = this.notes.filter(o => o.t < o.len);
+  }
+}
+
 /* ===================== MUSIC ===================== */
 const Q = { maj7: [0, 4, 7, 11], maj9: [0, 4, 7, 11, 14], min7: [0, 3, 7, 10], min9: [0, 3, 7, 10, 14], dom9: [0, 4, 7, 10, 14], m11: [0, 3, 7, 10, 17], add9: [0, 4, 7, 14] };
 const PROGS = [
@@ -608,12 +693,13 @@ const MAKERS = {
   rain: p => new Rain(p), tinroof: p => new TinRoof(p), thunder: p => new Thunder(p), waves: p => new Waves(p),
   wind: p => new Wind(p), birds: p => new Birds(p), stream: p => new Stream(p), fire: p => new Fire(p),
   crickets: p => new Crickets(p), frogs: p => new Frogs(p), fan: p => new Fan(p),
+  gulls: p => new Gulls(p), leaves: () => new Leaves(), cicadas: () => new Cicadas(), owl: () => new Owl(),
   lofi: p => new Lofi(p), piano: p => new Piano(p), pad: p => new Pad(p),
   white: () => new Noise("white"), pink: () => new Noise("pink"), brown: () => new Noise("brown"),
 };
 
 // output trims so every sound sits at a similar loudness at the same slider position
-const TRIM = { lofi: 0.7, piano: 1.9, pad: 2.4, birds: 2.8, frogs: 2.4, crickets: 2.2, wind: 1.25, waves: 0.85, tinroof: 2.4, thunder: 3.3, stream: 1.35 };
+const TRIM = { gulls: 5, leaves: 5.5, cicadas: 0.6, owl: 3, lofi: 0.7, piano: 1.9, pad: 2.4, birds: 2.8, frogs: 2.4, crickets: 2.2, wind: 1.25, waves: 0.85, tinroof: 2.4, thunder: 3.3, stream: 1.35 };
 
 class NatureProcessor extends AudioWorkletProcessor {
   constructor() {

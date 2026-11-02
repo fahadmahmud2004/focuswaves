@@ -26,10 +26,10 @@ Every push to `main` deploys automatically (Workers Builds runs `npx wrangler de
 | `sw.js`, `manifest.webmanifest` | Installable app / offline support |
 
 ## Sounds
-- **Nature:** waves, wind, birds (koel, spotted dove, songbirds), stream, fireplace
+- **Nature:** waves, wind, birds (koel, spotted dove, songbirds), stream, fireplace, seagulls, leaves, cicadas
 - **Rain & storm:** rain, tin roof, thunder
-- **Night:** crickets, frogs
-- **Music:** lofi beats, soft piano, ambient pad. All three follow one shared chord progression, so any combination stays in tune.
+- **Night:** crickets, frogs, owl
+- **Music (optional, folded away):** lofi beats, soft piano, ambient pad. All three follow one shared chord progression. **Music never plays while the Quran is playing**; nature sounds keep going.
 - **Focus noise:** fan, white, pink, brown
 
 Each one is a small simulation with random events and slowly drifting character, not a recording, so nothing loops.
@@ -41,6 +41,11 @@ The recitation has its own volume, a "soft and distant" mode, and a slider for h
 Volume and soft mode go through Web Audio when the audio host sends CORS headers; otherwise the player falls back to a plain
 `<audio>` element (volume still works, except on iPhone where the hardware buttons control it).
 If you later host the files on R2, add a CORS rule allowing `https://focus.freakingwaves.com` so soft mode works.
+
+## Clock
+- Modes: **Timer** (focus / short / long breaks, custom minutes), **Stopwatch**, **Clock** (time with Gregorian, Bangla and Hijri dates).
+- 8 faces, including a Bangla-numeral face. Drag the clock anywhere; resize it in the Clock panel.
+- Sky: Auto (follows local time) or fixed Dawn / Day / Dusk / Night.
 
 ## Share links
 "Copy link to this mix" gives a link like `focus.freakingwaves.com/#mix=rain-60.waves-30`. Opening it loads that mix.

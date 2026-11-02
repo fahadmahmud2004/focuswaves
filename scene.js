@@ -8,7 +8,7 @@ const Scene = (() => {
   const cv = document.getElementById("scene"), g = cv.getContext("2d");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let W = 0, H = 0, dpr = 1, t = 0, last = performance.now();
-  const KEYS = ["rain", "tinroof", "thunder", "waves", "wind", "birds", "stream", "fire", "crickets", "frogs", "fan", "lofi", "piano", "pad", "white", "pink", "brown"];
+  const KEYS = ["gulls", "leaves", "cicadas", "owl", "rain", "tinroof", "thunder", "waves", "wind", "birds", "stream", "fire", "crickets", "frogs", "fan", "lofi", "piano", "pad", "white", "pink", "brown"];
   const target = {}, lvl = {};
   KEYS.forEach(k => (target[k] = lvl[k] = 0));
   let windNow = 0.3, foam = 0, flash = 0, bolt = null, hourOverride = null;
@@ -173,7 +173,8 @@ const Scene = (() => {
     }
 
     /* birds crossing */
-    if (!isNight && lvl.birds > 0.05 && flocks.length < 2 && R() < dt / 14 * lvl.birds) spawnFlock();
+    const flyers = Math.max(lvl.birds, lvl.gulls);
+    if (!isNight && flyers > 0.05 && flocks.length < 2 && R() < dt / 14 * flyers) spawnFlock();
     for (let i = flocks.length - 1; i >= 0; i--) {
       const f = flocks[i]; f.x += f.vx * dt; f.y += Math.sin(t * 0.7 + f.ph) * 4 * dt;
       if (f.x < -200 || f.x > W + 200) { flocks.splice(i, 1); continue; }
@@ -185,7 +186,7 @@ const Scene = (() => {
     }
 
     /* the far bank: a line of trees appears when the mix sounds like a village or forest */
-    const land = Math.max(0, Math.min(1, lvl.birds * 1.1 + lvl.stream * 0.9 + lvl.frogs * 0.7 + lvl.crickets * 0.5 - lvl.waves * 0.9));
+    const land = Math.max(0, Math.min(1, lvl.birds * 1.1 + lvl.stream * 0.9 + lvl.leaves * 0.8 + lvl.cicadas * 0.6 + lvl.frogs * 0.7 + lvl.owl * 0.5 + lvl.crickets * 0.5 - lvl.waves * 0.9));
     if (land > 0.02) {
       const tc = mix(mix(P.far, [18, 34, 26], 0.6), GREY, overcast * 0.3), step = W / (trees.length - 1);
       g.fillStyle = rgb(mix(tc, [4, 8, 10], night * 0.6), land); g.beginPath(); g.moveTo(0, horizon + 2);
@@ -252,7 +253,7 @@ const Scene = (() => {
     }
 
     /* fireflies (crickets / frogs at dusk and night) */
-    const ff = Math.min(1, lvl.crickets + lvl.frogs) * Math.max(0.15, night);
+    const ff = Math.min(1, lvl.crickets + lvl.frogs + lvl.owl * 0.5) * Math.max(0.15, night);
     if (ff > 0.03) {
       const n = Math.round(flies.length * ff);
       for (let i = 0; i < n; i++) {
@@ -398,7 +399,7 @@ const Scene = (() => {
         const x = W * (0.5 + e.x * 0.35);
         for (let i = 0; i < 14; i++) sparks.push({ x, y: H * 0.97, vx: rr(-90, 90), vy: -rr(160, 420), life: 1 });
       } else if (e.ev === "drip" && lvl.tinroof > 0.05) drips.push({ x: W * (0.5 + e.x * 0.5), y: 30, vy: 0, l: 12 });
-      else if (e.ev === "bird" && lvl.birds > 0.1 && flocks.length < 3 && R() < 0.5) spawnFlock();
+      else if (e.ev === "bird" && Math.max(lvl.birds, lvl.gulls) > 0.1 && flocks.length < 3 && R() < 0.5) spawnFlock();
       else if (e.ev === "wind") windNow = e.v;
     },
     setHour(h) { hourOverride = h; },
