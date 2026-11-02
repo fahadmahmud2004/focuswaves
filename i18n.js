@@ -1,8 +1,10 @@
 /* English by default; Bangla with the toggle. */
 const STR = {
   en: {
-    title: "FocusWaves", langBtn: "বাং",
-    tagline: "Sit by the sea. Get your work done.", begin: "Begin", headphones: "Best with headphones",
+    title: "Focus Waves", langBtn: "বাং",
+    tagline: "Sit by the sea. Get your work done.", begin: "Begin",
+    gMorning: "Good morning", gNoon: "Good afternoon", gEvening: "Good evening", gNight: "Up late? Let's make it count.",
+    pickMix: "Choose where to start", lastMix: "Your last mix", introFoot: "Free · No sign-up · Made in Bangladesh", headphones: "Best with headphones",
     sharedMix: "Someone shared a mix with you: ",
     intent: "What are you working on?", length: "Session length",
     focus: "Focus", break: "Short break", longBreak: "Long break", breakHint: "stand up, drink some water",
@@ -40,8 +42,10 @@ const STR = {
     hide: "Hide", showHint: "Tap anywhere to bring the controls back", controls: "Controls", mix: "Mix",
   },
   bn: {
-    title: "FocusWaves", langBtn: "EN",
-    tagline: "সমুদ্রের পাড়ে বসো। কাজটা শেষ করো।", begin: "শুরু করো", headphones: "হেডফোনে সবচেয়ে ভালো লাগবে",
+    title: "Focus Waves", langBtn: "EN",
+    tagline: "সমুদ্রের পাড়ে বসো। কাজটা শেষ করো।", begin: "শুরু করো",
+    gMorning: "শুভ সকাল", gNoon: "শুভ দুপুর", gEvening: "শুভ সন্ধ্যা", gNight: "রাত জাগছো? সময়টা কাজে লাগাও।",
+    pickMix: "কোথা থেকে শুরু করবে", lastMix: "তোমার শেষ মিক্স", introFoot: "ফ্রি · সাইন-আপ লাগে না · বাংলাদেশে তৈরি", headphones: "হেডফোনে সবচেয়ে ভালো লাগবে",
     sharedMix: "তোমার সাথে একটা মিক্স শেয়ার করা হয়েছে: ",
     intent: "আজ কী নিয়ে কাজ করছ?", length: "সেশনের সময়",
     focus: "ফোকাস", break: "ছোট বিরতি", longBreak: "লম্বা বিরতি", breakHint: "উঠে দাঁড়াও, একটু পানি খাও",

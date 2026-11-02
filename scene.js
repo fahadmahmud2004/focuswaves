@@ -138,7 +138,7 @@ const Scene = (() => {
 
     /* sun / moon */
     const isNight = night > 0.5, narrow = W < 700;
-    const bx = W * (narrow ? 0.82 : 0.8) - par.x * 6, by = narrow ? H * 0.17 : horizon - H * (isNight ? 0.31 : 0.21);
+    const bx = W * (narrow ? 0.82 : 0.865) - par.x * 6, by = narrow ? H * 0.17 : horizon - H * (isNight ? 0.31 : 0.21);
     const bodyA = 1 - overcast * 0.9;
     if (bodyA > 0.04) {
       const gc = isNight ? [222, 230, 255] : mix([255, 206, 150], [255, 246, 228], 1 - P.night * 2);

@@ -1,6 +1,6 @@
-# FocusWaves
+# Focus Waves
 
-**FocusWaves by Freaking Waves**, live at focus.freakingwaves.com.
+**Focus Waves by Freaking Waves**, live at focus.freakingwaves.com.
 
 A living sea for deep focus: mix calm nature sounds, run focus sessions, and listen to the Quran with soft sounds behind the recitation. English and Bangla.
 It is a static site: no server, no database, no build step. It runs on the Cloudflare Pages free tier.

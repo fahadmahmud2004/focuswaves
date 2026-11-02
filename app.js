@@ -477,7 +477,7 @@
 
   function relabel() {
     applyI18n(); buildSounds(); buildFaces(); OPTS.forEach(o => buildOpts(...o)); if (openName === "mixes") renderMixes();
-    paintDockMix(); paint(); paintStats(); sharedNote(); applyQuranOut();
+    paintDockMix(); paint(); paintStats(); sharedNote(); applyQuranOut(); if (!started && typeof buildPicks === "function") { greet(); buildPicks(); }
     $("#playBtn").setAttribute("aria-label", t(playing ? "pauseSounds" : "play"));
   }
   function setLang() { LANG = LANG === "en" ? "bn" : "en"; try { localStorage.setItem("fw:lang", LANG); } catch {} relabel(); }
@@ -487,8 +487,8 @@
     if (!("mediaSession" in navigator)) return;
     const s = +surahSel.value, art = [{ src: "brand/icon-512.png", sizes: "512x512" }];
     navigator.mediaSession.metadata = new MediaMetadata(quranActive()
-      ? { title: `Surah ${SURAHS[s - 1]}`, artist: RECITERS[+recSel.value].name, album: "FocusWaves", artwork: art }
-      : { title: mixLabel() || t("yourMix"), artist: "FocusWaves", artwork: art });
+      ? { title: `Surah ${SURAHS[s - 1]}`, artist: RECITERS[+recSel.value].name, album: "Focus Waves", artwork: art }
+      : { title: mixLabel() || t("yourMix"), artist: "Focus Waves", artwork: art });
   }
   if ("mediaSession" in navigator) {
     const ms = navigator.mediaSession;
@@ -517,6 +517,31 @@
   }
   $("#beginBtn").addEventListener("click", enter);
 
+  /* ---- intro: wordmark letters, a greeting for the hour, and a choice of where to start ---- */
+  { const w = $(".intro-word .w"); let i = 0;
+    [["Focus", ""], [" ", "sp"], ["Waves", "red"]].forEach(([txt, cls]) => {
+      if (cls === "sp") { const s = document.createElement("span"); s.className = "sp"; w.appendChild(s); return; }
+      [...txt].forEach(ch => { const s = document.createElement("span"); s.className = "ch" + (cls ? " " + cls : ""); s.textContent = ch; s.style.setProperty("--i", i++); w.appendChild(s); });
+    });
+  }
+  function greet() { const h = new Date().getHours(); $("#greet").textContent = t(h >= 4 && h < 12 ? "gMorning" : h < 16 ? "gNoon" : h < 19 ? "gEvening" : "gNight"); }
+  const PICKS = ["coxs", "borsha", "bhor", "sheet"];
+  let picked = null;
+  function buildPicks() {
+    const box = $("#picks"); box.innerHTML = "";
+    const last = store.get("mix", null), hasLast = !shared && last && Object.keys(last).length && !PICKS.includes(store.get("activeMix", ""));
+    const items = (hasLast ? [{ id: "__last", name: t("lastMix"), mix: last, art: (MIXES.find(m => m.id === store.get("activeMix", "")) || {}).art || ["#7f8fa3", "#26323e"] }] : [])
+      .concat(PICKS.map(id => MIXES.find(m => m.id === id)).map(m => ({ id: m.id, name: nameOf(m), mix: m.mix, art: m.art })));
+    if (shared) return;
+    if (!picked) picked = hasLast ? "__last" : (PICKS.includes(store.get("activeMix", "")) ? store.get("activeMix", "") : "coxs");
+    items.slice(0, 4).forEach(it => {
+      const b = document.createElement("button"); b.className = "pick"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", it.id === picked);
+      b.innerHTML = `<i></i><span></span>`; b.querySelector("i").style.background = `linear-gradient(180deg, ${it.art[0]} 0 52%, ${it.art[1]} 52%)`; b.querySelector("span").textContent = it.name;
+      b.onclick = () => { picked = it.id; applyMix(it.mix, it.id === "__last" ? store.get("activeMix", null) : it.id, false); buildPicks(); };
+      box.appendChild(b);
+    });
+  }
+
   /* ============================ INIT ============================ */
   const saved = store.get("mix", null);
   relabel();
@@ -524,6 +549,6 @@
   else if (saved && Object.keys(saved).length) applyMix(saved, store.get("activeMix", null), false);
   else applyMix(MIXES[0].mix, MIXES[0].id, false);
   if (cur && !cur.getAttribute("src")) { attempts = quranSources(RECITERS[+recSel.value], +surahSel.value).flatMap(url => [{ url, el: qA }, { url, el: qB }]); attemptIdx = 0; }
-  F.remaining = total(); paintMode(); paint();
+  F.remaining = total(); paintMode(); paint(); greet(); buildPicks();
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js");
 })();

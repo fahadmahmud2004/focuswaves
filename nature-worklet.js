@@ -1,5 +1,5 @@
 /* =====================================================================
-   FocusWaves nature engine (AudioWorklet)
+   Focus Waves nature engine (AudioWorklet)
    Every sound is synthesised live, sample by sample. Nothing is a loop,
    so nothing repeats: rain drops, waves, gusts, birds and crackles are all
    random events with slowly drifting character.
