@@ -8,7 +8,7 @@
 const Audio_ = (() => {
   let ctx, node, master, duck, out, dryLP, wet, verb, ready = null;
   const listeners = [];
-  const q = { src: null, el: null, gain: null, lp: null, send: null, vol: 0.9, soft: false };
+  const q = { src: null, el: null, gain: null, lp: null, send: null, vol: 0.25, soft: true };
 
   function impulse(c, secs = 3.2) {          // a soft, open space, generated (no file)
     const n = Math.floor(c.sampleRate * secs), ir = c.createBuffer(2, n, c.sampleRate);

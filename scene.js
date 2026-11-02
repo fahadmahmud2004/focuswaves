@@ -11,7 +11,7 @@ const Scene = (() => {
   const KEYS = ["gulls", "leaves", "cicadas", "owl", "rain", "tinroof", "thunder", "waves", "wind", "birds", "stream", "fire", "crickets", "frogs", "fan", "lofi", "piano", "pad", "white", "pink", "brown"];
   const target = {}, lvl = {};
   KEYS.forEach(k => (target[k] = lvl[k] = 0));
-  let windNow = 0.3, foam = 0, flash = 0, bolt = null, hourOverride = null;
+  let windNow = 0.3, foam = 0, flash = 0, bolt = null, hourOverride = null, clockSpec = null, clockRect = null;
   const par = { x: 0, y: 0, tx: 0, ty: 0 };
 
   /* ---------- palette by hour ---------- */
@@ -220,6 +220,7 @@ const Scene = (() => {
       const fa = (lvl.waves * 0.4 + lvl.thunder * 0.2 + foam * 0.9) * f;
       if (fa > 0.03) { g.strokeStyle = `rgba(255,255,255,${Math.min(0.75, fa * 0.45)})`; g.lineWidth = 1 + f * 1.5; g.stroke(); }
       if (i === 1) drawBoats(dt, horizon, P, night, overcast, amp);
+      if (i === 2) drawClock(horizon, P, night, overcast);
     }
     // spray thrown up when a wave breaks
     for (let i = spray.length - 1; i >= 0; i--) {
@@ -344,6 +345,47 @@ const Scene = (() => {
     flash *= Math.pow(0.015, dt);
   }
 
+  /* The clock as part of the world: tall glass numerals standing in the sea. The nearer swells (drawn after
+     this) cover its foot, and the palms stand in front of it, like the depth effect on a phone lock screen. */
+  // The numerals are rendered once into an offscreen sprite (opaque shape, then the glass gradient laid over it),
+  // so overlapping stroke + fill never double up, and each frame is a single drawImage.
+  const spr = { c: document.createElement("canvas"), key: "" };
+  function clockSprite(lines, fs, cols) {
+    const key = lines.join("|") + fs.toFixed(1) + cols.map(c => c.map(v => v >> 3).join(",")).join(";");
+    if (key === spr.key) return spr;
+    const c = spr.c, x = c.getContext("2d"), font = `ultra-condensed 560 ${fs}px Archivo, "Arial Narrow", sans-serif`, lh = fs * 0.8, pad = fs * 0.05;
+    x.font = font; const w = Math.max(...lines.map(l => x.measureText(l).width)) + pad * 2, h = lh * lines.length + pad * 2;
+    c.width = Math.ceil(w); c.height = Math.ceil(h);
+    x.font = font; x.textAlign = "center"; x.textBaseline = "alphabetic"; x.lineJoin = "round";
+    x.fillStyle = x.strokeStyle = "#fff"; x.lineWidth = fs * 0.03;
+    lines.forEach((l, i) => { const y = pad + lh * (i + 1) - fs * 0.07; x.strokeText(l, w / 2, y); x.fillText(l, w / 2, y); });
+    x.globalCompositeOperation = "source-in";
+    const gr = x.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, rgb(cols[0], 0.97)); gr.addColorStop(0.55, rgb(cols[1], 0.86)); gr.addColorStop(1, rgb(cols[2], 0.72));
+    x.fillStyle = gr; x.fillRect(0, 0, w, h);
+    x.globalCompositeOperation = "source-over";
+    Object.assign(spr, { key, w, h, lh, pad });
+    return spr;
+  }
+  function drawClock(horizon, P, night, overcast) {
+    if (!clockSpec) { clockRect = null; return; }
+    const { text, x = 0, y = 0, s = 1 } = clockSpec, seaH = H - horizon, narrow = W < 600;
+    // phones: hours over minutes, like a bedside clock; wide screens: one line
+    const parts = text.split(":"), lines = narrow && parts.length >= 2 ? [parts.slice(0, -1).join(":"), parts[parts.length - 1]] : [text];
+    const bottom = horizon + seaH * (narrow ? 0.3 : 0.34) + y, room = bottom - H * (narrow ? 0.17 : 0.2);
+    g.font = `ultra-condensed 560 100px Archivo, "Arial Narrow", sans-serif`;
+    const per100 = Math.max(...lines.map(l => g.measureText(l).width)) / 100;
+    let fs = Math.min(room / (0.8 * lines.length), (W * (narrow ? 0.86 : 0.8)) / per100) * s;
+    const sky = mix(P.top, GREY, overcast * 0.4), hor = mix(P.hor, GREY, overcast * 0.4), lift = 0.25 * night;
+    const sp = clockSprite(lines, fs, [mix(sky, [255, 255, 255], 0.9), mix(hor, [255, 255, 255], 0.66 + lift), mix(hor, [255, 255, 255], 0.42 + lift)]);
+    const dx = W / 2 + x - sp.w / 2, dy = bottom - sp.h + sp.pad + fs * 0.07;
+    g.save();
+    g.shadowColor = `rgba(0,0,0,${0.18 + night * 0.12})`; g.shadowBlur = fs * 0.07; g.shadowOffsetY = fs * 0.015;
+    g.drawImage(spr.c, dx, dy);
+    g.restore();
+    clockRect = { x: dx, y: dy, w: sp.w, h: sp.h };
+  }
+
   function drawBoats(dt, horizon, P, night, overcast, amp) {
     const sc = Math.max(0.6, Math.min(1.3, H / 820)), seaH = H - horizon;
     const hull = rgb(mix([10, 14, 20], P.hor, 0.18 + overcast * 0.2)), sail = rgb(mix([40, 44, 52], P.hor, 0.38 + overcast * 0.15));
@@ -435,5 +477,7 @@ const Scene = (() => {
       else if (e.ev === "wind") windNow = e.v;
     },
     setHour(h) { hourOverride = h; },
+    setClock(spec) { clockSpec = spec; if (reduce) draw(0); },
+    clockRect() { return clockRect; },
   };
 })();

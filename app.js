@@ -67,21 +67,39 @@
   document.addEventListener("pointerdown", e => { if (openName && !e.target.closest(".panel, .dock, .toast")) openPanel(null); });
   /* ---- the clock block can be resized and dragged anywhere; a plain click opens the Clock panel ---- */
   const focusBox = $("#focus"), L0 = Object.assign({ x: 0, y: 0, s: 1 }, store.get("layout", {}));
-  const applyLayout = () => { focusBox.style.setProperty("--fx", L0.x + "px"); focusBox.style.setProperty("--fy", L0.y + "px"); focusBox.style.setProperty("--fs", L0.s); };
+  let onLayout = () => {};                            // set once the clock face exists (Depth repositions the painted clock)
+  const applyLayout = () => { focusBox.style.setProperty("--fx", L0.x + "px"); focusBox.style.setProperty("--fy", L0.y + "px"); focusBox.style.setProperty("--fs", L0.s); onLayout(); };
   const clampLayout = () => { const mx = innerWidth / 2 - 60, my = innerHeight / 2 - 60; L0.x = Math.max(-mx, Math.min(mx, L0.x)); L0.y = Math.max(-my, Math.min(my, L0.y)); };
-  { let drag = null;
-    const ck = $("#clock");
-    ck.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, ox: L0.x, oy: L0.y, moved: false }; ck.setPointerCapture(e.pointerId); });
-    ck.addEventListener("pointermove", e => {
-      if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  /* one finger on the clock drags it; two fingers anywhere in the middle pinch it bigger or smaller;
+     a trackpad pinch (ctrl + wheel) does the same on a laptop. A plain tap on the clock opens the Clock panel. */
+  { const ck = $("#clock"), pts = new Map(); let drag = null, pinch = null;
+    const dist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+    const setScale = v => { L0.s = Math.max(0.5, Math.min(1.6, v)); const si = $("#clockSize"); if (si) { si.value = L0.s; setP(si); } applyLayout(); };
+    focusBox.addEventListener("pointerdown", e => {
+      if (e.target.closest("input, button, select")) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) { drag = null; pinch = { d: dist(), s: L0.s }; focusBox.classList.add("dragging"); }
+      else if (pts.size === 1 && e.target === ck) { drag = { x: e.clientX, y: e.clientY, ox: L0.x, oy: L0.y, moved: false }; ck.setPointerCapture(e.pointerId); }
+    });
+    addEventListener("pointermove", e => {
+      if (!pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && pts.size === 2) { setScale(pinch.s * dist() / pinch.d); return; }
+      if (!drag) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       if (!drag.moved && Math.hypot(dx, dy) < 6) return;
       drag.moved = true; focusBox.classList.add("dragging"); L0.x = drag.ox + dx; L0.y = drag.oy + dy; clampLayout(); applyLayout();
     });
-    ck.addEventListener("pointerup", () => { if (!drag) return; const moved = drag.moved; drag = null; focusBox.classList.remove("dragging"); if (moved) store.set("layout", L0); else openPanel("clock"); });
-    ck.addEventListener("pointercancel", () => { drag = null; focusBox.classList.remove("dragging"); });
+    const end = e => {
+      if (!pts.has(e.pointerId)) return; pts.delete(e.pointerId);
+      if (pinch) { if (pts.size < 2) { pinch = null; focusBox.classList.remove("dragging"); store.set("layout", L0); } return; }
+      if (drag) { const moved = drag.moved; drag = null; focusBox.classList.remove("dragging"); if (moved) store.set("layout", L0); else if (e.type === "pointerup") openPanel("clock"); }
+    };
+    addEventListener("pointerup", end); addEventListener("pointercancel", end);
+    focusBox.addEventListener("wheel", e => { if (!e.ctrlKey) return; e.preventDefault(); setScale(L0.s * Math.exp(-e.deltaY * 0.01)); clearTimeout(focusBox._w); focusBox._w = setTimeout(() => store.set("layout", L0), 300); }, { passive: false });
   }
   const sizeIn = $("#clockSize"); sizeIn.value = L0.s; setP(sizeIn);
-  sizeIn.addEventListener("input", () => { L0.s = +sizeIn.value; setP(sizeIn); applyLayout(); store.set("layout", L0); });
+  sizeIn.max = 1.6; sizeIn.addEventListener("input", () => { L0.s = +sizeIn.value; setP(sizeIn); applyLayout(); store.set("layout", L0); });
   $("#layoutReset").addEventListener("click", () => { Object.assign(L0, { x: 0, y: 0, s: 1 }); sizeIn.value = 1; setP(sizeIn); applyLayout(); store.set("layout", L0); });
   addEventListener("resize", () => { clampLayout(); applyLayout(); });
   applyLayout();
@@ -155,7 +173,8 @@
 
   const mv = $("#masterVol"); mv.value = store.get("master", 0.8); setP(mv);
   mv.addEventListener("input", () => { setP(mv); store.set("master", +mv.value); Audio_.setMaster(+mv.value); });
-  let space = store.get("space", 1);
+  if (store.get("defV", 0) < 1) { store.set("space", 2); store.set("qSoft", true); store.set("defV", 1); }   // new defaults: Far, and the Quran soft
+  let space = store.get("space", 2);
   const paintSpace = () => $$("#spaceSeg button").forEach(b => b.setAttribute("aria-checked", +b.dataset.v === space));
   $$("#spaceSeg button").forEach(b => b.addEventListener("click", () => { space = +b.dataset.v; store.set("space", space); paintSpace(); Audio_.setSpace(space); }));
   paintSpace();
@@ -178,7 +197,7 @@
     $("#mixArt").style.background = artCss(m ? m.art : ["#56677a", "#1f2a35"]);
   }
   function renderMixes() {
-    const cats = [["nature", "nature"], ["neuro", "neuro"], ["focus", "focusCat"], ["music", "music"]];
+    const cats = [["nature", "nature"], ["focus", "focusCat"], ["music", "music"]];
     if (userMixes().length) cats.push(["yours", "yours"]);
     const f = $("#mixFilters"); f.innerHTML = "";
     cats.forEach(([id, key]) => { const b = document.createElement("button"); b.textContent = t(key); b.setAttribute("aria-pressed", mixFilter === id); b.onclick = () => { mixFilter = id; renderMixes(); }; f.appendChild(b); });
@@ -253,7 +272,20 @@
   intent.value = store.get("intent", "");
   intent.addEventListener("input", () => store.set("intent", intent.value));
   intent.addEventListener("keydown", e => { if (e.key === "Enter") { intent.blur(); if (!F.running) focusBtn.click(); } });
-  function paint() {
+  /* Depth face: the scene paints the clock inside the sea; the DOM clock becomes an invisible handle on top of it */
+  function depthClock() {
+    const on = face === "depth"; document.body.classList.toggle("depth", on);
+    Scene.setClock(on ? { text: clock.textContent, x: L0.x, y: L0.y, s: L0.s } : null);
+    placeHandle();
+  }
+  function placeHandle() {
+    const r = face === "depth" && Scene.clockRect();
+    if (r) Object.assign(clock.style, { left: r.x + "px", top: r.y + "px", width: r.w + "px", height: r.h + "px" });
+    else ["left", "top", "width", "height"].forEach(k => (clock.style[k] = ""));
+  }
+  setInterval(placeHandle, 300); addEventListener("resize", () => setTimeout(placeHandle, 50)); onLayout = depthClock;
+  function paint() { paintCore(); depthClock(); }
+  function paintCore() {
     const digits = s => (face === "bangla" ? bnDigits(s) : s);
     if (CM === "clock") {
       const d = new Date(), H = d.getHours(), M = String(d.getMinutes()).padStart(2, "0");
@@ -349,15 +381,16 @@
   function swReset() { if (SW.running) swPause(); SW.acc = 0; SW.logged = 0; store.set("swAcc", 0); paint(); }
   setInterval(() => { if (CM !== "timer") paint(); }, 250);
 
-  const FACES = [["bold"], ["tide"], ["glass"], ["clear"], ["mirror"], ["tall"], ["wide"]];
-  let face = store.get("face", "bold"); if (!FACES.some(f => f[0] === face)) face = "bold";
+  const FACES = [["depth"], ["bold"], ["tide"], ["glass"], ["clear"], ["mirror"], ["tall"], ["wide"]];
+  if (store.get("faceV", 0) < 2) { store.set("face", "depth"); store.set("faceV", 2); }      // the redesign makes Depth the default once
+  let face = store.get("face", "depth"); if (!FACES.some(f => f[0] === face)) face = "depth";
   const loaded = new Set();
   const loadFont = f => { if (!f || loaded.has(f)) return; loaded.add(f); const l = document.createElement("link"); l.rel = "stylesheet"; l.href = `https://fonts.googleapis.com/css2?family=${f}&display=swap`; document.head.appendChild(l); };
   function buildFaces() {
     const box = $("#faces"); box.innerHTML = "";
     FACES.forEach(([id, font]) => {
       const b = document.createElement("button"); b.dataset.face = id; b.setAttribute("aria-pressed", id === face);
-      b.innerHTML = `<b>25:00</b><small></small>`; b.querySelector("small").textContent = t("faceNames")[id];
+      b.innerHTML = id === "depth" ? `<b class="dpv">25:00<i></i></b><small></small>` : `<b>25:00</b><small></small>`; b.querySelector("small").textContent = t("faceNames")[id];
       b.onclick = () => { face = id; store.set("face", id); loadFont(font); clock.dataset.face = id; buildFaces(); paint(); };
       box.appendChild(b);
     });
@@ -404,7 +437,8 @@
   SURAHS.forEach((n, i) => surahSel.add(new Option(`${i + 1}. ${n}`, i + 1)));
   RECITERS.forEach((r, i) => recSel.add(new Option(r.name, i)));
   surahSel.value = store.get("surah", 1); recSel.value = store.get("reciter", 0);
-  qVol.value = store.get("qVol", 0.9); qNature.value = store.get("qNature", 0.35); qSoft.checked = store.get("qSoft", false);
+  if (store.get("defV", 0) < 2) { store.set("qVol", 0.25); store.set("qNature", 1); store.set("defV", 2); }   // recitation 25%, nature stays at 100%
+  qVol.value = store.get("qVol", 0.25); qNature.value = store.get("qNature", 1); qSoft.checked = store.get("qSoft", true);
   [qVol, qNature].forEach(setP);
   let cur = qA, attempts = [], attemptIdx = 0, qWant = false, qBlocked = false, qTimer = null, graphOK = null;
   const quranActive = () => !cur.paused && !cur.ended;

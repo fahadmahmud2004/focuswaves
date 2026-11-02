@@ -52,7 +52,9 @@ If you later host the files on R2, add a CORS rule allowing `https://focus.freak
 
 ## Clock
 - Modes: **Timer** (focus / short / long breaks, custom minutes), **Stopwatch**, **Clock** (time with Gregorian, Bangla and Hijri dates).
-- 8 faces, including a Bangla-numeral face. Drag the clock anywhere; resize it in the Clock panel.
+- Default face **Depth**: tall glass numerals painted inside the scene, standing in the sea, so the near waves and the palms pass in front of them (like a phone lock screen's depth effect). On phones the hours sit above the minutes.
+- Other faces: Bold, Tide (half under water), Glass, Clear, Mirror, Tall, Wide.
+- Drag the clock with one finger; pinch with two (or ctrl + trackpad pinch) to resize.
 - Sky: Auto (follows local time) or fixed Dawn / Day / Dusk / Night.
 
 ## Share links
