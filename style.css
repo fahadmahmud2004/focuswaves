@@ -34,7 +34,7 @@ svg { flex: none; }
 .intro.gone { opacity: 0; visibility: hidden; }
 .intro-in { display: flex; flex-direction: column; align-items: center; animation: rise 1.2s var(--ease) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
-.intro-mark { width: 54px; height: auto; margin-bottom: 18px; filter: drop-shadow(0 4px 18px rgba(230,0,0,.35)); }
+.intro-mark { width: 76px; height: 76px; margin-bottom: 20px; filter: drop-shadow(0 6px 24px rgba(0,0,0,.35)); }
 .intro-word { font-family: var(--display); font-weight: 800; font-size: clamp(48px, 11vw, 104px); letter-spacing: -.045em; line-height: .9; margin: 0; }
 .intro-word span { color: var(--red-hi); }
 .intro-line { font-size: clamp(16px, 2.4vw, 20px); color: var(--ink-2); margin: 18px 0 34px; max-width: 30ch; }
@@ -55,7 +55,7 @@ body.pre .top, body.pre .focus, body.pre .dock { opacity: 0; pointer-events: non
 /* ===== top ===== */
 .top { display: flex; align-items: center; padding: max(18px, env(safe-area-inset-top)) 24px 0; width: 100%; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; margin-right: auto; }
-.brand img { width: 30px; height: auto; }
+.brand img { width: 36px; height: 36px; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.05; }
 .brand-text b { font-family: var(--display); font-weight: 800; font-size: 18px; letter-spacing: -.02em; }
 .brand-text b i { font-style: normal; color: var(--red-hi); }

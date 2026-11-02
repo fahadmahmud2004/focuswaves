@@ -69,6 +69,9 @@ const Scene = (() => {
   }
   const sprites = [0, 1, 2, 3].map(i => cloudSprite(320, 120, i));
   const clouds = Array.from({ length: 7 }, (_, i) => ({ x: R() * 1.3 - 0.15, y: rr(0.04, 0.34), s: rr(0.8, 1.7), d: rr(0.5, 1.2), sp: sprites[i % 4] }));
+  // distant country boats (nouka) with square sails and a bamboo canopy; d = how far out (0 near the horizon)
+  const boats = [{ x: 0.2, v: 0.0014, s: 1, ph: 1, d: 0.22 }, { x: 0.63, v: -0.001, s: 0.72, ph: 2.3, d: 0.11 }, { x: 0.9, v: 0.0007, s: 0.52, ph: 4.1, d: 0.04 }];
+  const shipLights = [{ x: 0.36, ph: 0, c: "255,240,210" }, { x: 0.74, ph: 2, c: "255,120,110" }];
   const trees = Array.from({ length: 90 }, () => ({ h: rr(0.4, 1), w: rr(0.6, 1.4), palm: R() < 0.18 }));
 
   const grain = document.createElement("canvas"); grain.width = grain.height = 160;
@@ -174,6 +177,7 @@ const Scene = (() => {
 
     /* birds crossing */
     const flyers = Math.max(lvl.birds, lvl.gulls);
+    if (!isNight && !reduce && flocks.length < 1 && R() < dt / 40) spawnFlock(true);       // a few far-off birds now and then
     if (!isNight && flyers > 0.05 && flocks.length < 2 && R() < dt / 14 * flyers) spawnFlock();
     for (let i = flocks.length - 1; i >= 0; i--) {
       const f = flocks[i]; f.x += f.vx * dt; f.y += Math.sin(t * 0.7 + f.ph) * 4 * dt;
@@ -215,6 +219,7 @@ const Scene = (() => {
       g.fillStyle = rgb(mix(far, near, f)); g.fill();
       const fa = (lvl.waves * 0.4 + lvl.thunder * 0.2 + foam * 0.9) * f;
       if (fa > 0.03) { g.strokeStyle = `rgba(255,255,255,${Math.min(0.75, fa * 0.45)})`; g.lineWidth = 1 + f * 1.5; g.stroke(); }
+      if (i === 1) drawBoats(dt, horizon, P, night, overcast, amp);
     }
     // spray thrown up when a wave breaks
     for (let i = spray.length - 1; i >= 0; i--) {
@@ -339,6 +344,33 @@ const Scene = (() => {
     flash *= Math.pow(0.015, dt);
   }
 
+  function drawBoats(dt, horizon, P, night, overcast, amp) {
+    const sc = Math.max(0.6, Math.min(1.3, H / 820)), seaH = H - horizon;
+    const hull = rgb(mix([10, 14, 20], P.hor, 0.18 + overcast * 0.2)), sail = rgb(mix([40, 44, 52], P.hor, 0.38 + overcast * 0.15));
+    // ship lights far out at night (open sea only)
+    if (night > 0.5) for (const L of shipLights) {
+      const a = (0.35 + 0.35 * Math.sin(t * 0.9 + L.ph)) * (night - 0.5) * 2 * (1 - overcast * 0.7);
+      g.fillStyle = `rgba(${L.c},${a})`; g.fillRect(L.x * W - par.x * 2, horizon + 1, 2, 2);
+    }
+    for (const b of boats) {
+      b.x += b.v * dt * (1 + lvl.wind * 1.5); if (b.x > 1.15) b.x = -0.15; if (b.x < -0.15) b.x = 1.15;
+      const k = b.s * sc * (0.55 + b.d * 2.2), x = b.x * W - par.x * (2 + b.d * 20), y = horizon + 3 + b.d * seaH * 0.45 + Math.sin(t * 0.9 + b.ph) * (1 + amp * 0.5) * k;
+      g.save(); g.translate(x, y); g.rotate(Math.sin(t * 0.7 + b.ph) * 0.03 * (1 + lvl.waves * 2)); g.scale(k * (b.v < 0 ? -1 : 1), k);
+      g.fillStyle = sail;                                   // the square sail on its mast
+      g.beginPath(); g.moveTo(5, -9); g.lineTo(7, -44); g.lineTo(27, -40); g.quadraticCurveTo(25, -24, 24, -8); g.closePath(); g.fill();
+      g.fillStyle = hull; g.fillRect(4.5, -46, 1.6, 40);
+      g.beginPath(); g.moveTo(-36, -9); g.quadraticCurveTo(-30, -2, -22, -1); g.lineTo(24, -1); g.quadraticCurveTo(32, -2, 36, -10); g.lineTo(31, 2); g.quadraticCurveTo(0, 8, -31, 2); g.closePath(); g.fill();   // hull with raised prow and stern
+      g.beginPath(); g.ellipse(-12, -1, 11, 8, 0, Math.PI, 0); g.fill();                                  // bamboo canopy (chhoi)
+      if (night > 0.45) {                                   // a lantern, and its light on the water
+        const a = (night - 0.45) * 1.8 * (0.85 + 0.15 * Math.sin(t * 7 + b.ph));
+        const lg = g.createRadialGradient(-12, -6, 0, -12, -6, 16); lg.addColorStop(0, `rgba(255,200,120,${a})`); lg.addColorStop(1, "rgba(255,200,120,0)");
+        g.fillStyle = lg; g.fillRect(-28, -22, 32, 32); g.fillStyle = `rgba(255,220,150,${a})`; g.fillRect(-13, -7, 2.4, 2.4);
+        for (let j = 0; j < 5; j++) { g.fillStyle = `rgba(255,200,120,${a * (0.35 - j * 0.06)})`; g.fillRect(-16 + Math.sin(t * 2 + j) * 2, 5 + j * 4, 8 - j, 1.2); }
+      }
+      g.restore();
+    }
+  }
+
   function palm(x0, y0, len, lean, sway, col, sc) {
     const s = Math.sin(t * 0.8 + x0) * sway, bend = lean + s * 0.35;
     const tx = x0 + Math.sin(bend) * len, ty = y0 - Math.cos(bend) * len, cx = x0 + Math.sin(lean) * len * 0.15 + 30 * sc, cy = y0 - len * 0.55;
@@ -370,10 +402,10 @@ const Scene = (() => {
     for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(tx + (i - 1.5) * 5 * sc, ty + 7 * sc + (i % 2) * 3 * sc, 5.5 * sc, 0, 6.283); g.fill(); }   // coconuts
   }
 
-  function spawnFlock() {
-    const dir = R() < 0.5 ? 1 : -1, n = 3 + ((R() * 5) | 0), s = rr(0.6, 1.2);
+  function spawnFlock(far) {
+    const dir = R() < 0.5 ? 1 : -1, n = far ? 2 + ((R() * 4) | 0) : 3 + ((R() * 5) | 0), s = far ? rr(0.32, 0.5) : rr(0.6, 1.2);
     flocks.push({
-      x: dir > 0 ? -120 : W + 120, y: rr(0.12, 0.38) * H, vx: dir * rr(38, 75) * s, ph: R() * 6,
+      x: dir > 0 ? -120 : W + 120, y: (far ? rr(0.18, 0.42) : rr(0.12, 0.38)) * H, vx: dir * rr(38, 75) * s, ph: R() * 6,
       birds: Array.from({ length: n }, (_, i) => ({ dx: -dir * i * rr(14, 22) * s, dy: (i % 2 ? 1 : -1) * i * rr(5, 9) * s, s: s * rr(0.8, 1.1), hz: rr(2.2, 3.2), ph: R() * 6 })),
     });
   }
