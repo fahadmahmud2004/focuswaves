@@ -4,24 +4,32 @@
    To add a reciter, add { name, path } where path is the folder
    on https://download.quranicaudio.com/quran/<path>/001.mp3
    ========================================================= */
+// YOUR OWN audio (Cloudflare R2). Put the public URL of the folder here, e.g.
+//   const QURAN_OWN = "https://audio.freakingwaves.com/quran/";
+// Files must be named  <reciter id>/<001..114>.mp3   (e.g. alafasy/001.mp3)
+// Leave it empty ("") to use only the public sources below.
+const QURAN_OWN = "";
+
 const QURAN_BASE = "https://download.quranicaudio.com/quran/";
 // Backup CDN, tried automatically if the first one fails.
 const QURAN_ALT = "https://cdn.islamic.network/quran/audio-surah/";
 
-// path = folder on quranicaudio.com, alt = edition on islamic.network
+// id = folder in your R2, path = folder on quranicaudio.com, alt = edition on islamic.network
 const RECITERS = [
-  { name: "Mishary Rashid Alafasy",   path: "mishaari_raashid_al_3afaasee", alt: "ar.alafasy" },
-  { name: "Abdul Basit (Murattal)",   path: "abdul_basit_murattal",         alt: "ar.abdulbasitmurattal" },
-  { name: "Mahmoud Khalil Al-Husary", path: "mahmood_khaleel_al-husaree",   alt: "ar.husary" },
-  { name: "Abdur-Rahman As-Sudais",   path: "abdurrahmaan_as-sudays",       alt: "ar.abdurrahmaansudais" },
-  { name: "Saad Al-Ghamdi",           path: "sa3d_al-ghaamidi/complete",    alt: null },
-  { name: "Maher Al-Muaiqly",         path: "maher_almu3aiqly/year1440",    alt: "ar.mahermuaiqly" },
-  { name: "Saud Ash-Shuraim",         path: "sa3ood_al-shuraym",            alt: "ar.saoodshuraym" },
+  { name: "Mishary Rashid Alafasy",   id: "alafasy", path: "mishaari_raashid_al_3afaasee", alt: "ar.alafasy" },
+  { name: "Abdul Basit (Murattal)",   id: "abdulbasit", path: "abdul_basit_murattal",         alt: "ar.abdulbasitmurattal" },
+  { name: "Mahmoud Khalil Al-Husary", id: "husary", path: "mahmood_khaleel_al-husaree",   alt: "ar.husary" },
+  { name: "Abdur-Rahman As-Sudais",   id: "sudais", path: "abdurrahmaan_as-sudays",       alt: "ar.abdurrahmaansudais" },
+  { name: "Saad Al-Ghamdi",           id: "ghamdi", path: "sa3d_al-ghaamidi/complete",    alt: null },
+  { name: "Maher Al-Muaiqly",         id: "muaiqly", path: "maher_almu3aiqly/year1440",    alt: "ar.mahermuaiqly" },
+  { name: "Saud Ash-Shuraim",         id: "shuraim", path: "sa3ood_al-shuraym",            alt: "ar.saoodshuraym" },
 ];
 
 // Every URL to try for one surah, best first.
 function quranSources(r, surah) {
-  const list = [`${QURAN_BASE}${r.path}/${String(surah).padStart(3, "0")}.mp3`];
+  const n3 = String(surah).padStart(3, "0"), list = [];
+  if (QURAN_OWN) list.push(`${QURAN_OWN}${r.id}/${n3}.mp3`);
+  list.push(`${QURAN_BASE}${r.path}/${n3}.mp3`);
   if (r.alt) for (const kbps of [128, 64, 192]) list.push(`${QURAN_ALT}${kbps}/${r.alt}/${surah}.mp3`);
   return list;
 }

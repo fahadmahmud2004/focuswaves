@@ -32,5 +32,16 @@ Only use audio you recorded or that is CC0 / free to use (freesound.org with CC0
 Keep each file under 25 MB (Cloudflare Pages limit). 1–3 MB per loop is ideal.
 
 ## Quran audio
-Streamed from quranicaudio.com. Nothing is stored on your site. After deploying, test each reciter once;
-if one fails, fix its folder name in `quran.js` (check at https://quranicaudio.com).
+Sources are tried in order until one plays (12 s timeout each):
+1. **Your own Cloudflare R2** (set `QURAN_OWN` in `quran.js`)
+2. quranicaudio.com
+3. islamic.network (backup)
+
+### Using your own R2
+1. Cloudflare → R2 → **Create bucket** `focuswaves-audio`
+2. Bucket → **Settings → Custom Domains → Connect Domain** → `audio.freakingwaves.com`
+   (use a custom domain, not the r2.dev URL: r2.dev is rate-limited and has no caching)
+3. Upload files as `quran/<reciter id>/<001..114>.mp3`, e.g. `quran/alafasy/001.mp3`.
+   Reciter ids are in `quran.js` (alafasy, abdulbasit, husary, sudais, ghamdi, muaiqly, shuraim).
+   You don't need every reciter: a missing file falls back to the public sources automatically.
+4. In `quran.js` set `const QURAN_OWN = "https://audio.freakingwaves.com/quran/";`

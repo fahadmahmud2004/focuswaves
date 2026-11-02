@@ -362,7 +362,7 @@
     ensureCtx();
     if (playing && !qUnder.checked) setPlaying(false);
     qStatus(t("loading"));
-    qWantPlay = true;
+    qWantPlay = true; armTimeout();
     qAudio.play().catch(err => { if (err.name === "NotAllowedError") qStatus(t("errPlay")); });
   }
   function pauseQuran() { qWantPlay = false; if (quranActive()) qAudio.pause(); }
@@ -391,12 +391,18 @@
   qAudio.addEventListener("playing", () => qStatus(""));
   qAudio.addEventListener("waiting", () => qStatus(t("buffering")));
   qAudio.addEventListener("pause", () => { qState(); if (!playing) keepAlive.pause(); });
+  // A blocked or dead source can hang on "Loading…" forever without firing "error".
+  let qTimer = null;
+  const armTimeout = () => { clearTimeout(qTimer); qTimer = setTimeout(() => qAudio.dispatchEvent(new Event("error")), 12000); };
+  qAudio.addEventListener("loadstart", () => qWantPlay && armTimeout());
+  qAudio.addEventListener("canplay", () => clearTimeout(qTimer));
   qAudio.addEventListener("error", () => {
-    if (!qAudio.getAttribute("src")) return;
+    clearTimeout(qTimer);
+    if (!qAudio.getAttribute("src") || qAudio.readyState >= 3) return;
     // try the next source for the same surah before giving up
     if (qSrcIdx < qSources.length - 1) {
       qAudio.src = qSources[++qSrcIdx];
-      if (qWantPlay) qAudio.play().catch(() => {});
+      if (qWantPlay) { armTimeout(); qAudio.play().catch(() => {}); }
       return;
     }
     qState(); qStatus(t(qBlocked ? "errBlocked" : "errLoad"));
