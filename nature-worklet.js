@@ -7,9 +7,14 @@
    ===================================================================== */
 const SR = sampleRate;
 const TAU = Math.PI * 2;
-const rnd = () => Math.random() * 2 - 1;
-const rand = (a, b) => a + Math.random() * (b - a);
-const pick = a => a[(Math.random() * a.length) | 0];
+// xorshift32: the engine draws a few million random numbers a second, so a cheap generator matters on slow machines
+let seed = (Math.random() * 4294967295) >>> 0 || 1;
+const urand = () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return (seed >>> 0) / 4294967296; };
+const rnd = () => urand() * 2 - 1;
+const rand = (a, b) => a + urand() * (b - a);
+const pick = a => a[(urand() * a.length) | 0];
+// drop finished items in place (no new array per audio block, so no garbage for the collector)
+const prune = (a, keep) => { let j = 0; for (let i = 0; i < a.length; i++) if (keep(a[i])) a[j++] = a[i]; a.length = j; return a; };
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const gauss = () => rnd() + rnd() + rnd();
 const panG = p => [Math.cos((p + 1) * Math.PI / 4), Math.sin((p + 1) * Math.PI / 4)];
@@ -45,7 +50,7 @@ class Pink {
 class Brown { constructor() { this.y = 0; } run() { this.y = (this.y + 0.02 * rnd()) / 1.02; return this.y * 3.5; } }
 class Poisson {          // random event clock: fires on average `rate` times a second
   constructor(rate) { this.rate = rate; this.t = this.draw(); }
-  draw() { return -Math.log(1 - Math.random()) * SR / Math.max(this.rate, 1e-4); }
+  draw() { return -Math.log(1 - urand()) * SR / Math.max(this.rate, 1e-4); }
   tick() { if (--this.t <= 0) { this.t = this.draw(); return true; } return false; }
 }
 class Res {              // struck two-pole resonator (a drop, a ping, a click)
@@ -69,9 +74,16 @@ const PADT = new Float32Array(4097); for (let i = 0; i <= 4096; i++) { const x =
 const ftab = (T, ph) => { const x = (ph - Math.floor(ph)) * 4096, i = x | 0; return T[i] + (T[i + 1] - T[i]) * (x - i); };
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 class Bursts {           // short decaying noise bursts: the body of a rain drop, a click, a tick
-  constructor(n) { this.b = Array.from({ length: n }, () => ({ n: 0 })); this.i = 0; }
-  add(len, amp, pan, decay = 0.8) { const b = this.b[this.i]; this.i = (this.i + 1) % this.b.length; b.n = len | 0; b.a = amp; b.d = decay; [b.gl, b.gr] = panG(pan); }
-  run(o) { let l = 0, r = 0; for (const b of this.b) if (b.n > 0) { const x = rnd() * b.a; l += x * b.gl; r += x * b.gr; b.a *= b.d; b.n--; } o[0] = l; o[1] = r; }
+  constructor(n) { this.b = Array.from({ length: n }, () => ({ n: 0 })); this.i = 0; this.live = 0; }
+  add(len, amp, pan, decay = 0.8) {
+    const b = this.b[this.i]; this.i = (this.i + 1) % this.b.length; if (b.n <= 0) this.live++;
+    b.n = Math.max(1, len | 0); b.a = amp; b.d = decay; const a = (pan + 1) * Math.PI / 4; b.gl = Math.cos(a); b.gr = Math.sin(a);
+  }
+  run(o) {
+    let l = 0, r = 0;
+    if (this.live > 0) for (const b of this.b) if (b.n > 0) { const x = rnd() * b.a; l += x * b.gl; r += x * b.gr; b.a *= b.d; if (--b.n <= 0) this.live--; }
+    o[0] = l; o[1] = r;
+  }
 }
 
 /* ---------- generators: render(n, L, R, WL, WR) adds into the buffers ---------- */
@@ -124,7 +136,7 @@ class TinRoof {
         // a gutter drop landing in a puddle: a tiny bubble that rises in pitch, plus a splash
         this.bub.push({ ph: 0, f: rand(700, 1300), k: Math.pow(rand(1.25, 1.6), 1 / (0.05 * SR)), a: rand(0.07, 0.12), d: Math.exp(-1 / (0.02 * SR)), n: 0.06 * SR, g: panG(d.x) });
         this.splash.add(rand(60, 140), 0.12, d.x, 0.96);
-        if (Math.random() < 0.5) this.p.emit({ ev: "drip", x: d.x });
+        if (urand() < 0.5) this.p.emit({ ev: "drip", x: d.x });
       }
       this.drops.run(tmp); const xl = tmp[0], xr = tmp[1];
       let ml = 0, mr = 0;
@@ -152,9 +164,9 @@ class Thunder {
     if (!this.ev) {
       this.wait -= n;
       if (this.wait <= 0) {
-        const dist = Math.random() ** 0.8, delay = (0.25 + dist * 3.5) * SR;
+        const dist = urand() ** 0.8, delay = (0.25 + dist * 3.5) * SR;
         this.p.emit({ ev: "flash", near: 1 - dist });
-        const bumps = Array.from({ length: 4 + ((Math.random() * 5) | 0) }, (_, k) => ({ t0: k === 0 ? 0 : rand(0.15, 5) * SR, at: rand(0.08, 0.6) * SR, dc: rand(0.7, 2.8) * SR, a: k === 0 ? 1 : rand(0.25, 0.85) }));
+        const bumps = Array.from({ length: 4 + ((urand() * 5) | 0) }, (_, k) => ({ t0: k === 0 ? 0 : rand(0.15, 5) * SR, at: rand(0.08, 0.6) * SR, dc: rand(0.7, 2.8) * SR, a: k === 0 ? 1 : rand(0.25, 0.85) }));
         this.ev = { t: -delay, dist, bumps, len: rand(7, 13) * SR, pan: rnd() * 0.5, dp: rnd() * 0.3 / SR, crack: dist < 0.4 ? 1 - dist : 0 };
         this.wait = rand(20, 75) * SR;
       }
@@ -168,11 +180,11 @@ class Thunder {
       for (const b of e.bumps) { const d = t - b.t0; if (d > 0) env += b.a * (d < b.at ? (d / b.at) ** 1.5 : Math.exp(-(d - b.at) / b.dc)); }
       env *= roll * (1.25 - e.dist * 0.6);
       // the crack: a fast, thinning crackle in the first half second
-      if (e.crack && t < 0.6 * SR && Math.random() < 0.02 * (1 - t / (0.6 * SR))) this.crk.add(rand(20, 160), rand(0.3, 1) * e.crack, rnd() * 0.4 + e.pan, 0.97);
+      if (e.crack && t < 0.6 * SR && urand() < 0.02 * (1 - t / (0.6 * SR))) this.crk.add(rand(20, 160), rand(0.3, 1) * e.crack, rnd() * 0.4 + e.pan, 0.97);
       this.crk.run(tmp); const cl = this.crkF[0].run(tmp[0]) * 0.6, cr = this.crkF[1].run(tmp[1]) * 0.6;
       this.f[0].run(this.b[0].run()); this.f[1].run(this.b[1].run());
       const bl = this.body[0].run(this.f[0].lp) * near * 0.5, br = this.body[1].run(this.f[1].lp) * near * 0.5;
-      e.pan = clamp(e.pan + e.dp, -0.8, 0.8); const [gl, gr] = panG(e.pan);
+      e.pan = clamp(e.pan + e.dp, -0.8, 0.8); const pa = (e.pan + 1) * Math.PI / 4, gl = Math.cos(pa), gr = Math.sin(pa);
       const l = (this.f[0].lp * 1.5 + bl) * env, r = (this.f[1].lp * 1.5 + br) * env;
       L[i] += l * gl * 1.4 + cl; R[i] += r * gr * 1.4 + cr;
       WL[i] += l * 0.6 + cl * 0.8; WR[i] += r * 0.6 + cr * 0.8;
@@ -195,20 +207,20 @@ class Waves {
     });
     this.wait = rand(3.5, 8.5) * SR;
   }
+  env(v, t) { return t < v.Tr ? 0.5 - 0.5 * Math.cos(Math.PI * t / v.Tr) : Math.max(0, 1 - (t - v.Tr) / v.Tf) ** 2.2; }
   render(n, L, R, WL, WR) {
     this.wait -= n; if (this.wait <= 0 && this.voices.length < 3) this.spawn();
     const bed = clamp(this.bedLvl.next(), 0.5, 1.5) * 0.32;
     for (let i = 0; i < n; i++) { L[i] += this.bedF[0].run(this.bed[0].run()) * bed; R[i] += this.bedF[1].run(this.bed[1].run()) * bed; }
     for (const v of this.voices) {
       const [gl, gr] = panG(v.pan), s = v.size;
-      const env = t => t < v.Tr ? 0.5 - 0.5 * Math.cos(Math.PI * t / v.Tr) : Math.max(0, 1 - (t - v.Tr) / v.Tf) ** 2.2;
-      const e0 = env(v.t);
+      const e0 = this.env(v, v.t);
       v.f[0].set(260 + 2100 * e0 * s); v.f[1].set(280 + 2000 * e0 * s);
       const fall = v.t > v.Tr ? (v.t - v.Tr) / v.Tf : 0;
       v.pebP.rate = fall > 0.45 && fall < 0.95 ? 70 * s * (1 - fall) : 0;
       if (!v.peaked && v.t >= v.Tr) { v.peaked = true; this.p.emit({ ev: "wave", size: s }); }
       for (let i = 0; i < n; i++) {
-        const t = v.t++, e = env(t);
+        const t = v.t++, e = this.env(v, t);
         v.f[0].run(v.src[0].run()); v.f[1].run(v.src[1].run());
         let l = v.f[0].lp * e * s * 1.3, r = v.f[1].lp * e * s * 1.3;
         if (t > v.Tr) {                                   // foam fizzing as the water slides back
@@ -220,7 +232,7 @@ class Waves {
         L[i] += l * gl * 1.3; R[i] += r * gr * 1.3; WL[i] += l * 0.2; WR[i] += r * 0.2;
       }
     }
-    this.voices = this.voices.filter(v => v.t < v.Tr + v.Tf);
+    prune(this.voices, v => v.t < v.Tr + v.Tf);
   }
 }
 
@@ -249,7 +261,7 @@ function songFor(b) {
   switch (b.type) {
     case "koel": {      // the Asian koel: "ku-oo", repeated, climbing and hurrying
       let k = b.f, gap = 0.9;
-      for (let i = 0, n = 4 + ((Math.random() * 4) | 0); i < n; i++) {
+      for (let i = 0, n = 4 + ((urand() * 4) | 0); i < n; i++) {
         add(0.16, k, k * 1.05, 0.8, 0, 0.05); add(0.34, k * 1.22, k * 1.42, 1, 0, gap);
         k *= 1.045; gap *= 0.86;
       }
@@ -257,14 +269,14 @@ function songFor(b) {
     }
     case "dove": {      // spotted dove: soft "ku-kroo-kroo"
       const f = b.f;
-      for (let i = 0, n = 2 + ((Math.random() * 2) | 0); i < n; i++) { add(0.12, f, f * 1.02, 0.6, 0, 0.08); add(0.32, f * 1.12, f * 0.98, 1, 6, 0.1); add(0.22, f * 1.05, f * 0.95, 0.8, 6, 1.1); }
+      for (let i = 0, n = 2 + ((urand() * 2) | 0); i < n; i++) { add(0.12, f, f * 1.02, 0.6, 0, 0.08); add(0.32, f * 1.12, f * 0.98, 1, 6, 0.1); add(0.22, f * 1.05, f * 0.95, 0.8, 6, 1.1); }
       break;
     }
-    case "chirp": for (let i = 0, n = 3 + ((Math.random() * 6) | 0); i < n; i++) add(rand(0.035, 0.07), b.f * rand(1.25, 1.5), b.f * rand(0.8, 0.95), rand(0.6, 1), 0, rand(0.05, 0.13)); break;
+    case "chirp": for (let i = 0, n = 3 + ((urand() * 6) | 0); i < n; i++) add(rand(0.035, 0.07), b.f * rand(1.25, 1.5), b.f * rand(0.8, 0.95), rand(0.6, 1), 0, rand(0.05, 0.13)); break;
     case "trill": add(rand(0.5, 1.2), b.f, b.f * rand(0.85, 0.97), 1, rand(24, 38)); break;
     default: {          // warbler: a little improvised melody
       let f = b.f;
-      for (let i = 0, n = 6 + ((Math.random() * 7) | 0); i < n; i++) { const nf = clamp(f * rand(0.8, 1.25), 2200, 6200); add(rand(0.05, 0.14), f, nf, rand(0.5, 1), Math.random() < 0.2 ? 30 : 0, rand(0.01, 0.04)); f = nf; }
+      for (let i = 0, n = 6 + ((urand() * 7) | 0); i < n; i++) { const nf = clamp(f * rand(0.8, 1.25), 2200, 6200); add(rand(0.05, 0.14), f, nf, rand(0.5, 1), urand() < 0.2 ? 30 : 0, rand(0.01, 0.04)); f = nf; }
     }
   }
   return N;
@@ -289,7 +301,7 @@ class Birds {
         if (b.wait <= 0) {
           b.song = { notes: songFor(b), i: 0, t: 0, ph: 0 };
           b.wait = (b.type === "koel" ? rand(25, 60) : b.type === "dove" ? rand(12, 30) : rand(3, 14)) * SR;
-          if (b.type !== "dove" && Math.random() < 0.3) this.p.emit({ ev: "bird", x: b.pan });
+          if (b.type !== "dove" && urand() < 0.3) this.p.emit({ ev: "bird", x: b.pan });
         }
         continue;
       }
@@ -351,7 +363,7 @@ class Fire {
     if ((this.hissT -= n) <= 0) { this.hissT = rand(15, 45) * SR; this.hiss = rand(2, 4) * SR; this.hissLen = this.hiss; }
     for (let i = 0; i < n; i++) {
       if (this.crk.tick()) {                    // a crackle is a little cluster of clicks
-        const p = rnd() * 0.8, c = 1 + ((Math.random() * 6) | 0); let off = 0;
+        const p = rnd() * 0.8, c = 1 + ((urand() * 6) | 0); let off = 0;
         for (let k = 0; k < c; k++) { off += rand(0.001, 0.014) * SR; this.queue.push({ at: off | 0, a: rand(0.15, 0.6), p }); }
       }
       if (this.pop.tick()) { const p = rnd() * 0.7; this.res.strike(rand(350, 900), 0.008, 0.3, p); this.bursts.push({ n: 120, a: 0.5, d: 0.95, g: panG(p) }); this.p.emit({ ev: "pop", x: p }); }
@@ -371,8 +383,8 @@ class Fire {
 class Crickets {
   constructor() {
     this.c = Array.from({ length: 6 }, () => ({
-      f: rand(3900, 5200), per: 1 / rand(1.4, 3.2), pulses: 2 + ((Math.random() * 3) | 0), pl: rand(0.012, 0.022), pg: rand(0.012, 0.028),
-      t: Math.random(), ph: 0, a: rand(0.015, 0.05), pan: rnd() * 0.9, on: true, sw: rand(10, 40),
+      f: rand(3900, 5200), per: 1 / rand(1.4, 3.2), pulses: 2 + ((urand() * 3) | 0), pl: rand(0.012, 0.022), pg: rand(0.012, 0.028),
+      t: urand(), ph: 0, a: rand(0.015, 0.05), pan: rnd() * 0.9, on: true, sw: rand(10, 40),
     }));
     this.c.forEach(c => { [c.gl, c.gr] = panG(c.pan); c.dph = TAU * c.f / SR; c.slot = c.pl + c.pg; });
     this.air = new Brown(); this.airLp = new LP(200);
@@ -412,7 +424,7 @@ class Frogs {
       if (!fr.bout) {
         fr.wait -= n;
         if (fr.wait <= 0) {
-          const k = fr.type === "croak" ? 2 + ((Math.random() * 6) | 0) : 3 + ((Math.random() * 6) | 0);
+          const k = fr.type === "croak" ? 2 + ((urand() * 6) | 0) : 3 + ((urand() * 6) | 0);
           fr.bout = { k, t: 0, len: (fr.type === "croak" ? rand(0.15, 0.38) : 0.06) * SR, gap: (fr.type === "croak" ? rand(0.18, 0.45) : rand(0.12, 0.3)) * SR, nextPulse: 0 };
           fr.wait = rand(3, 13) * SR;
         }
@@ -463,9 +475,9 @@ class Gulls {            // seagulls: a few "kee-ow" calls, near and far, now an
   render(n, L, R, WL, WR) {
     this.wait -= n;
     if (this.wait <= 0) {
-      const dist = rand(0.2, 0.9), pan = rnd() * 0.8, k = 1 + ((Math.random() * 4) | 0), f0 = rand(1700, 2400);
+      const dist = rand(0.2, 0.9), pan = rnd() * 0.8, k = 1 + ((urand() * 4) | 0), f0 = rand(1700, 2400);
       for (let i = 0; i < k; i++) this.calls.push({ t: -((i * rand(0.28, 0.45)) * SR | 0), len: rand(0.22, 0.38) * SR, f0: f0 * rand(0.95, 1.05), f1: f0 * rand(0.55, 0.7), ph: 0, a: (1.1 - dist) * 0.06, g: panG(pan), dist });
-      if (Math.random() < 0.4) this.p.emit({ ev: "bird", x: pan });
+      if (urand() < 0.4) this.p.emit({ ev: "bird", x: pan });
       this.wait = rand(4, 16) * SR;
     }
     for (let i = 0; i < n; i++) {
@@ -480,7 +492,7 @@ class Gulls {            // seagulls: a few "kee-ow" calls, near and far, now an
       }
       L[i] += this.lp[0].run(l); R[i] += this.lp[1].run(r); WL[i] += w * 0.6; WR[i] += w * 0.6;
     }
-    this.calls = this.calls.filter(c => c.t < c.len);
+    prune(this.calls, c => c.t < c.len);
   }
 }
 class Leaves {           // a canopy rustling as gusts pass through it
@@ -504,15 +516,15 @@ class Cicadas {          // the summer-afternoon drone: buzzing swells that rise
     this.c.forEach((c, k) => this.f[k].set(c.f, 5));
     for (let i = 0; i < n; i++) {
       let l = 0, r = 0;
-      this.c.forEach((c, k) => {
-        c.t++;
+      for (let k = 0; k < 4; k++) {
+        const c = this.c[k]; c.t++;
         if (c.t > c.len + c.rest) { Object.assign(c, this.make(false)); this.f[k].set(c.f, 5); }
-        const x = c.t / c.len; if (x > 1) return;
+        const x = c.t / c.len; if (x > 1) continue;
         const env = Math.sin(Math.PI * x) ** 0.6 * (x < 0.85 ? 1 : (1 - x) / 0.15);
         c.ph += c.am / SR;
         const y = this.f[k].run(rnd()) * (0.55 + 0.45 * fsin(c.ph)) * env * c.a * 3;
         l += y * c.g[0]; r += y * c.g[1];
-      });
+      }
       L[i] += l; R[i] += r; WL[i] += l * 0.2; WR[i] += r * 0.2;
     }
   }
@@ -522,7 +534,7 @@ class Owl {              // a spotted owlet / owl: soft "hoo ... hoo-hoo" from t
   render(n, L, R, WL, WR) {
     this.wait -= n;
     if (this.wait <= 0) {
-      const f = rand(330, 430), pan = rnd() * 0.8, dist = rand(0.3, 0.85), pat = Math.random() < 0.5 ? [0.45, 0.25, 0.3] : [0.5, 0.6];
+      const f = rand(330, 430), pan = rnd() * 0.8, dist = rand(0.3, 0.85), pat = urand() < 0.5 ? [0.45, 0.25, 0.3] : [0.5, 0.6];
       let at = 0; const g = panG(pan);
       pat.forEach((d, i) => { this.notes.push({ t: -(at * SR | 0), len: d * SR, f: f * (i === 0 ? 1 : 0.97), ph: 0, a: (1.1 - dist) * 0.12, g, dist }); at += d + rand(0.12, 0.3); });
       this.wait = rand(14, 40) * SR;
@@ -538,7 +550,7 @@ class Owl {              // a spotted owlet / owl: soft "hoo ... hoo-hoo" from t
       }
       L[i] += l; R[i] += r; WL[i] += w * 0.9; WR[i] += w * 0.9;
     }
-    this.notes = this.notes.filter(o => o.t < o.len);
+    prune(this.notes, o => o.t < o.len);
   }
 }
 
@@ -594,7 +606,7 @@ class Lofi {
   constructor(p) {
     this.p = p; this.h = p.harmony; this.step = -1; this.stepT = 0; this.voices = []; this.bass = null; this.drums = []; this.dropBars = 0;
     this.lp = [new LP(3800), new LP(3800)]; this.lp2 = [new LP(5200), new LP(5200)];
-    this.vin = new Bursts(6); this.vinP = new Poisson(5); this.hiss = new Pink(); this.hissHp = new HP(2500); this.wowPh = Math.random();
+    this.vin = new Bursts(6); this.vinP = new Poisson(5); this.hiss = new Pink(); this.hissHp = new HP(2500); this.wowPh = urand();
     this.hatF = new HP(7000); this.snF = new SVF(1900, 0.8);
   }
   trigger(step) {
@@ -603,25 +615,25 @@ class Lofi {
     const bar = h.bar, ch = h.chord(bar), drums = this.dropBars <= 0;
     const add = (fn, delay = 0) => this.drums.push({ t: -(at + delay) | 0, fn });
     if (step === 0) {
-      if (bar % 16 === 15 && Math.random() < 0.3) this.dropBars = 4; else if (this.dropBars > 0) this.dropBars--;
+      if (bar % 16 === 15 && urand() < 0.3) this.dropBars = 4; else if (this.dropBars > 0) this.dropBars--;
       this.voices.forEach(v => (v.dur = Math.min(v.dur, v.t)));
       ch.tones.forEach((m, k) => this.voices.push(Object.assign(new EP(mtof(m + 12 * (m < this.h.key + 2 ? 1 : 0)), 0.07 * rand(0.8, 1), this.h.barLen / SR * 1.1), { t: -(k * rand(0.012, 0.03) * SR) | 0 })));
       this.bassNote(ch.root - 24, 0);
-      if (Math.random() < 0.55) this.melody(ch);
+      if (urand() < 0.55) this.melody(ch);
     }
-    if (step === 10 && Math.random() < 0.3) ch.tones.slice(1).forEach((m, k) => this.voices.push(Object.assign(new EP(mtof(m + 12), 0.035, 0.5, 1), { t: -(at + k * 0.015 * SR) | 0 })));
-    if (step === 8 && Math.random() < 0.6) this.bassNote(ch.root - 24 + (Math.random() < 0.5 ? 7 : 0), at);
-    if (step === 14 && Math.random() < 0.3) this.bassNote(h.chord(bar + 1).root - 25, at);
+    if (step === 10 && urand() < 0.3) ch.tones.slice(1).forEach((m, k) => this.voices.push(Object.assign(new EP(mtof(m + 12), 0.035, 0.5, 1), { t: -(at + k * 0.015 * SR) | 0 })));
+    if (step === 8 && urand() < 0.6) this.bassNote(ch.root - 24 + (urand() < 0.5 ? 7 : 0), at);
+    if (step === 14 && urand() < 0.3) this.bassNote(h.chord(bar + 1).root - 25, at);
     if (!drums) return;
-    if (step === 0 || step === 10 || (step === 7 && Math.random() < 0.35)) add(t => { const f = 45 + 85 * Math.exp(-t / (0.03 * SR)); this.kph = (this.kph || 0) + f / SR; return fsin(this.kph) * Math.exp(-t / (0.2 * SR)) * 0.55; });
+    if (step === 0 || step === 10 || (step === 7 && urand() < 0.35)) add(t => { const f = 45 + 85 * Math.exp(-t / (0.03 * SR)); this.kph = (this.kph || 0) + f / SR; return fsin(this.kph) * Math.exp(-t / (0.2 * SR)) * 0.55; });
     if (step === 4 || step === 12) add(t => { const e = Math.exp(-t / (0.09 * SR)); return this.snF.run(rnd()) * e * 0.5 + fsin(t * 185 / SR) * Math.exp(-t / (0.04 * SR)) * 0.18; });
-    if (step % 2 === 0 || Math.random() < 0.12) { const v = rand(0.4, 0.85) * (step % 4 === 0 ? 1 : 0.7); add(t => this.hatF.run(rnd()) * Math.exp(-t / (0.022 * SR)) * v * 0.16); }
+    if (step % 2 === 0 || urand() < 0.12) { const v = rand(0.4, 0.85) * (step % 4 === 0 ? 1 : 0.7); add(t => this.hatF.run(rnd()) * Math.exp(-t / (0.022 * SR)) * v * 0.16); }
   }
   bassNote(m, delay) { this.bass = { f: mtof(m), t: -(delay | 0), ph: 0 }; }
   melody(ch) {
-    const notes = 2 + ((Math.random() * 3) | 0), base = this.h.key + 12;
+    const notes = 2 + ((urand() * 3) | 0), base = this.h.key + 12;
     for (let i = 0; i < notes; i++) {
-      const m = base + pick(PENTA) + (Math.random() < 0.3 ? 12 : 0);
+      const m = base + pick(PENTA) + (urand() < 0.3 ? 12 : 0);
       this.voices.push(Object.assign(new EP(mtof(m), 0.05, 0.35, 2.2), { t: -((rand(1, 3.5) * this.h.beat + i * this.h.beat * 0.5) | 0) }));
     }
   }
@@ -643,14 +655,14 @@ class Lofi {
       L[i] += l + tmp[0] * 0.5 + hs; R[i] += r + tmp[1] * 0.5 + hs;
       WL[i] += m * 0.25; WR[i] += m * 0.25;
     }
-    this.voices = this.voices.filter(v => !v.done); this.drums = this.drums.filter(dr => dr.t < 0.6 * SR);
+    prune(this.voices, v => !v.done); prune(this.drums, dr => dr.t < 0.6 * SR);
   }
 }
 class Piano {            // sparse, unhurried notes that drift over the harmony
   constructor(p) { this.h = p.harmony; this.voices = []; this.wait = rand(0.5, 2) * SR; }
   note(m, v, pan) {
     const f0 = mtof(m), parts = [];
-    for (let k = 1; k <= 4; k++) parts.push({ f: f0 * k * Math.sqrt(1 + 0.0004 * k * k) / SR, a: v * Math.pow(k, -1.3) * (k === 1 ? 1 : 0.6), d: Math.exp(-1 / (3 / Math.pow(k, 0.8) * SR)), ph: Math.random() });
+    for (let k = 1; k <= 4; k++) parts.push({ f: f0 * k * Math.sqrt(1 + 0.0004 * k * k) / SR, a: v * Math.pow(k, -1.3) * (k === 1 ? 1 : 0.6), d: Math.exp(-1 / (3 / Math.pow(k, 0.8) * SR)), ph: urand() });
     if (this.voices.length >= 8) this.voices.shift();
     this.voices.push({ parts, t: 0, g: panG(pan), ham: v * 0.25 });
   }
@@ -660,7 +672,7 @@ class Piano {            // sparse, unhurried notes that drift over the harmony
       const ch = this.h.chord(), pool = ch.tones.map(m => m + 12).concat(PENTA.map(x => this.h.key + 12 + x));
       const m = pick(pool), v = rand(0.05, 0.11), pan = rnd() * 0.5;
       this.note(m, v, pan);
-      if (Math.random() < 0.3) this.note(pick(pool) + (Math.random() < 0.5 ? 12 : -12), v * 0.7, -pan);
+      if (urand() < 0.3) this.note(pick(pool) + (urand() < 0.5 ? 12 : -12), v * 0.7, -pan);
       this.wait = rand(1.1, 3.6) * SR;
     }
     for (let i = 0; i < n; i++) {
@@ -672,7 +684,7 @@ class Piano {            // sparse, unhurried notes that drift over the harmony
       }
       L[i] += l; R[i] += r; WL[i] += l * 0.9; WR[i] += r * 0.9;
     }
-    this.voices = this.voices.filter(v => v.parts[0].a > 0.0015);
+    prune(this.voices, v => v.parts[0].a > 0.0015);
   }
 }
 class Pad {              // slow, warm chords that breathe; follows the harmony every two bars
@@ -681,14 +693,14 @@ class Pad {              // slow, warm chords that breathe; follows the harmony 
     const ch = this.h.chord(bar - (bar % 2));
     return ch.tones.slice(0, 4).map((m, k) => {
       const f = mtof(k === 0 ? m - 12 : m);
-      return [-1, 1].map(d => ({ f: f * Math.pow(2, d * 3.5 / 1200) / SR, ph: Math.random(), pan: d * 0.5 }));
+      return [-1, 1].map(d => ({ f: f * Math.pow(2, d * 3.5 / 1200) / SR, ph: urand(), pan: d * 0.5 }));
     }).flat();
   }
   render(n, L, R, WL, WR) {
     const key = this.h.bar - (this.h.bar % 2);
     if (!this.cur || this.cur.key !== key) { if (this.cur) this.old.push(this.cur); this.cur = { key, v: this.chordVoices(this.h.bar), a: 0 }; }
     const br = clamp(this.breath.next(), 0.6, 1.3), fade = n / (3.5 * SR);
-    this.cur.a = Math.min(1, this.cur.a + fade); this.old.forEach(o => (o.a -= fade)); this.old = this.old.filter(o => o.a > 0);
+    this.cur.a = Math.min(1, this.cur.a + fade); this.old.forEach(o => (o.a -= fade)); prune(this.old, o => o.a > 0);
     const all = [this.cur, ...this.old];
     for (let i = 0; i < n; i++) {
       let l = 0, r = 0;
@@ -703,6 +715,154 @@ class Pad {              // slow, warm chords that breathe; follows the harmony 
   }
 }
 
+/* ---- more instruments: each has its own character, so music mixes stop sounding alike ---- */
+class Pluck {            // a plucked string (Karplus-Strong): noise burst into a tuned, damped delay line
+  constructor() { this.buf = new Float32Array(2400); this.on = false; }
+  strike(f, amp, bright, sustain, pan) {
+    const N = SR / clamp(f, 22, 4000) - 0.5, len = Math.ceil(N) + 2;
+    this.N = N; this.len = len; this.w = 0; this.prev = 0; this.amp = amp; this.on = true; this.t = 0;
+    this.g = Math.pow(0.001, 1 / (sustain * f));      // loss per round trip so the note fades in ~sustain seconds
+    let lp = 0; const k = clamp(bright, 0.05, 1);
+    for (let i = 0; i < len; i++) { lp += (rnd() - lp) * k; this.buf[i] = lp; }
+    const a = (pan + 1) * Math.PI / 4; this.gl = Math.cos(a); this.gr = Math.sin(a); this.life = sustain * 1.3 * SR;
+  }
+  run() {
+    const len = this.len, b = this.buf;
+    let idx = this.w - this.N; if (idx < 0) idx += len;
+    const i0 = idx | 0, fr = idx - i0, y = b[i0] + (b[i0 + 1 < len ? i0 + 1 : 0] - b[i0]) * fr;
+    b[this.w] = this.g * 0.5 * (y + this.prev); this.prev = y;
+    if (++this.w >= len) this.w = 0;
+    if (++this.t > this.life) this.on = false;
+    return y * this.amp;
+  }
+}
+class PluckPool {
+  constructor(n) { this.v = Array.from({ length: n }, () => new Pluck()); this.i = 0; }
+  strike(f, a, br, sus, pan) { const v = this.v[this.i]; this.i = (this.i + 1) % this.v.length; v.strike(f, a, br, sus, pan); }
+  run(o) { let l = 0, r = 0; for (const v of this.v) if (v.on) { const y = v.run(); l += y * v.gl; r += y * v.gr; } o[0] = l; o[1] = r; }
+}
+class Guitar {           // a nylon-string guitar fingerpicking the shared chords, unhurried
+  constructor(p) { this.h = p.harmony; this.pool = new PluckPool(10); this.step = -1; this.q = []; this.body = [new SVF(180, 0.9), new SVF(190, 0.9)]; this.lp = [new LP(3600), new LP(3400)]; this.pat = 0; }
+  trigger(step) {
+    const h = this.h, ch = h.chord(), t = ch.tones, root = ch.root - 12;
+    if (step === 0) this.pat = (urand() * 3) | 0;
+    const P = [[0, 2, 3, 2, 1, 3, 4, 3], [0, 3, 2, 4, 1, 3, 2, 4], [0, 2, 4, 2, 1, 2, 3, 2]][this.pat];
+    const k = P[step], swing = step % 2 ? h.beat * 0.06 : 0, hum = urand() * 0.012 * SR;
+    if (urand() < 0.08 && step % 2) return;                           // a breath now and then
+    const m = k === 0 ? root : k === 1 ? root + 7 : t[Math.min(t.length - 1, k)] + (t[Math.min(t.length - 1, k)] < h.key ? 12 : 0);
+    const v = (k <= 1 ? 0.5 : 0.36) * rand(0.8, 1.1) * (step === 0 ? 1.15 : 1);
+    this.q.push({ at: (swing + hum) | 0, f: mtof(m), v, br: k <= 1 ? 0.35 : 0.55, sus: k <= 1 ? 3.5 : 2.4, pan: k <= 1 ? -0.15 : rand(-0.1, 0.4) });
+  }
+  render(n, L, R, WL, WR) {
+    const h = this.h, stepLen = h.beat / 2;
+    for (let i = 0; i < n; i++) {
+      const s = Math.floor(h.t / stepLen) % 8;
+      if (s !== this.step) { this.step = s; this.trigger(s); }
+      for (let k = this.q.length - 1; k >= 0; k--) { const e = this.q[k]; if (--e.at <= 0) { this.pool.strike(e.f, e.v, e.br, e.sus, e.pan); this.q.splice(k, 1); } }
+      this.pool.run(tmp);
+      const l = this.lp[0].run(tmp[0] + this.body[0].run(tmp[0]) * 0.25), r = this.lp[1].run(tmp[1] + this.body[1].run(tmp[1]) * 0.25);
+      L[i] += l; R[i] += r; WL[i] += l * 0.45; WR[i] += r * 0.45;
+    }
+  }
+}
+class Kalimba {          // thumb piano: a slow, changing ostinato of bell-like tines
+  constructor(p) { this.h = p.harmony; this.pool = new Pool(24); this.wait = SR; this.motif = this.newMotif(); this.i = 0; this.reps = 0; this.lp = [new LP(6500), new LP(6500)]; }
+  newMotif() { const n = 4 + ((urand() * 3) | 0), o = []; for (let i = 0; i < n; i++) o.push(pick(PENTA) + (urand() < 0.35 ? 12 : 0)); return o; }
+  render(n, L, R, WL, WR) {
+    const h = this.h; this.wait -= n;
+    if (this.wait <= 0) {
+      if (this.i >= this.motif.length) { this.i = 0; if (++this.reps > 2 + urand() * 3) { this.reps = 0; this.motif = this.newMotif(); } else if (urand() < 0.5) this.motif[(urand() * this.motif.length) | 0] = pick(PENTA) + (urand() < 0.35 ? 12 : 0); this.wait = h.beat * (urand() < 0.5 ? 2 : 1); }
+      else {
+        const m = h.key + 12 + this.motif[this.i++], f = mtof(m), v = rand(0.05, 0.08), pan = rnd() * 0.5;
+        this.pool.strike(f, rand(1.1, 1.8), v, pan); this.pool.strike(f * 5.93, 0.07, v * 0.22, pan); this.pool.strike(f * 2.01, 0.25, v * 0.12, pan);
+        this.wait = h.beat * (urand() < 0.2 ? 1 : 0.5);
+      }
+    }
+    for (let i = 0; i < n; i++) { this.pool.run(tmp); const l = this.lp[0].run(tmp[0]), r = this.lp[1].run(tmp[1]); L[i] += l; R[i] += r; WL[i] += l * 0.7; WR[i] += r * 0.7; }
+  }
+}
+class Flute {            // a bansuri: long breathy notes that glide into each other, phrases with rests
+  constructor(p) {
+    this.h = p.harmony; this.f = 0; this.ft = 0; this.ph = 0; this.a = 0; this.at = 0; this.t = 0; this.vib = 0; this.wait = rand(1, 3) * SR; this.phrase = []; this.noteT = 0;
+    this.br = new Pink(); this.brF = new SVF(800, 3); this.air = new SVF(2500, 0.7); this.deg = 2;
+  }
+  plan() {
+    const n = 3 + ((urand() * 5) | 0), out = []; let d = this.deg;
+    for (let i = 0; i < n; i++) { d = clamp(d + pick([-2, -1, -1, 1, 1, 2, 0]), 0, 9); out.push({ d, len: rand(0.5, 1.6) * (i === n - 1 ? 2 : 1) }); }
+    this.deg = d; return out;
+  }
+  render(n, L, R, WL, WR) {
+    const h = this.h;
+    if (!this.phrase.length && this.at === 0) { this.wait -= n; if (this.wait <= 0) this.phrase = this.plan(); }
+    for (let i = 0; i < n; i++) {
+      if (this.noteT <= 0) {
+        if (this.phrase.length) {
+          const nt = this.phrase.shift(), deg = nt.d, m = h.key + 12 + PENTA[deg % 5] + 12 * Math.floor(deg / 5);
+          this.ft = mtof(m); if (!this.f) this.f = this.ft; this.at = 1; this.noteT = nt.len * SR; this.t = 0;
+        } else if (this.at) { this.at = 0; this.wait = rand(2.5, 7) * SR; }
+        else this.noteT = SR;
+      }
+      this.noteT--; this.t++;
+      this.f += (this.ft - this.f) * 0.00022;                      // the glide (meend) between notes
+      this.a += (this.at - this.a) * (this.at ? 0.00045 : 0.00012);
+      this.vib += 5.2 / SR;
+      const vd = Math.min(1, this.t / (0.45 * SR)) * 0.0045, f = this.f * (1 + vd * fsin(this.vib));
+      this.ph += f / SR; if (this.ph > 1) this.ph -= 1;
+      if (this.t % 64 === 0) this.brF.set(f, 4);
+      const tone = fsin(this.ph) + 0.18 * fsin(this.ph * 2) + 0.06 * fsin(this.ph * 3);
+      const b = this.br.run(), breath = this.brF.run(b) * 0.9 + this.air.run(b) * 0.12;
+      const y = (tone * 0.85 + breath) * this.a * 0.11;
+      L[i] += y; R[i] += y * 0.92; WL[i] += y * 0.9; WR[i] += y * 0.9;
+    }
+    if (!this.a && !this.f) return;
+  }
+}
+class Tanpura {          // the drone behind Indian classical music: Pa, Sa, Sa, low Sa, plucked in a slow cycle
+  constructor(p) { this.h = p.harmony; this.pool = new PluckPool(5); this.i = 0; this.wait = 0; this.buzz = [new SVF(1800, 1.5), new SVF(1900, 1.5)]; this.lp = [new LP(4200), new LP(4000)]; }
+  render(n, L, R, WL, WR) {
+    const key = this.h.key - 12; this.wait -= n;
+    if (this.wait <= 0) {
+      const m = [key - 5, key, key, key - 12][this.i], pan = [-0.35, -0.1, 0.1, 0.35][this.i];
+      this.pool.strike(mtof(m), this.i === 3 ? 0.55 : 0.4, 0.9, this.i === 3 ? 7 : 5.5, pan);
+      this.wait = (this.i === 3 ? rand(2.2, 2.6) : rand(1.05, 1.25)) * SR; this.i = (this.i + 1) % 4;
+    }
+    for (let i = 0; i < n; i++) {
+      this.pool.run(tmp);
+      const jl = tmp[0] + this.buzz[0].run(tmp[0] * Math.abs(tmp[0]) * 6) * 0.35, jr = tmp[1] + this.buzz[1].run(tmp[1] * Math.abs(tmp[1]) * 6) * 0.35;   // jawari: the bright buzz
+      const l = this.lp[0].run(jl), r = this.lp[1].run(jr);
+      L[i] += l; R[i] += r; WL[i] += l * 0.5; WR[i] += r * 0.5;
+    }
+  }
+}
+class Arp {              // a steady, soft synth arpeggio: even 16ths, no melody, slow filter drift. Made for focus.
+  constructor(p) {
+    this.h = p.harmony; this.step = -1; this.v = []; this.cut = new Drift(1300, 450, 9); this.f = [new SVF(1200, 0.9), new SVF(1200, 0.9)];
+    this.dl = [new Float32Array(SR), new Float32Array(SR)]; this.dw = 0; this.idx = 0;
+  }
+  trigger(step) {
+    const ch = this.h.chord(), t = ch.tones.slice(0, 4), seq = [0, 1, 2, 3, 2, 1, 2, 3];
+    const m = t[seq[(this.idx++) % 8]], acc = step % 4 === 0 ? 1 : 0.7;
+    if (this.v.length > 6) this.v.shift();
+    this.v.push({ ph: urand(), ph2: urand(), f: mtof(m) / SR, a: 0.2 * acc, d: Math.exp(-1 / (0.16 * SR)) });
+  }
+  render(n, L, R, WL, WR) {
+    const h = this.h, stepLen = h.beat / 4, c = clamp(this.cut.next(), 600, 2200);
+    this.f[0].set(c, 0.9); this.f[1].set(c * 1.05, 0.9);
+    const D = Math.round(h.beat * 0.75), len = this.dl[0].length;                 // a dotted-eighth ping-pong echo
+    for (let i = 0; i < n; i++) {
+      const s = Math.floor(h.t / stepLen) % 16;
+      if (s !== this.step) { this.step = s; this.trigger(s); }
+      let x = 0;
+      for (const v of this.v) { v.ph += v.f; v.ph2 += v.f * 1.004; if (v.ph > 1) v.ph -= 1; if (v.ph2 > 1) v.ph2 -= 1; x += (ftab(PADT, v.ph) + ftab(PADT, v.ph2)) * v.a; v.a *= v.d; }
+      const rd = (this.dw - D + len) % len, el = this.dl[0][rd], er = this.dl[1][rd];
+      const l = this.f[0].run(x), r = this.f[1].run(x);
+      this.dl[0][this.dw] = l * 0.5 + er * 0.42; this.dl[1][this.dw] = el * 0.42; this.dw = (this.dw + 1) % len;
+      L[i] += l + el * 0.5; R[i] += r + er * 0.5; WL[i] += l * 0.4; WR[i] += r * 0.4;
+    }
+    prune(this.v, v => v.a > 0.0005);
+  }
+}
+
 const MAKERS = {
   rain: p => new Rain(p), tinroof: p => new TinRoof(p), thunder: p => new Thunder(p), waves: p => new Waves(p),
   wind: p => new Wind(p), birds: p => new Birds(p), stream: p => new Stream(p), fire: p => new Fire(p),
@@ -710,11 +870,12 @@ const MAKERS = {
   gulls: p => new Gulls(p), leaves: () => new Leaves(), cicadas: () => new Cicadas(), owl: () => new Owl(),
   binaural: p => new Binaural(p),
   lofi: p => new Lofi(p), piano: p => new Piano(p), pad: p => new Pad(p),
+  guitar: p => new Guitar(p), kalimba: p => new Kalimba(p), flute: p => new Flute(p), tanpura: p => new Tanpura(p), arp: p => new Arp(p),
   white: () => new Noise("white"), pink: () => new Noise("pink"), brown: () => new Noise("brown"),
 };
 
 // output trims so every sound sits at a similar loudness at the same slider position
-const TRIM = { binaural: 1, gulls: 5, leaves: 5.5, cicadas: 0.6, owl: 3, lofi: 0.7, piano: 1.9, pad: 2.4, birds: 2.8, frogs: 2.4, crickets: 2.2, wind: 1.25, waves: 0.85, tinroof: 2.4, thunder: 3.3, stream: 1.35 };
+const TRIM = { binaural: 1, gulls: 5, leaves: 5.5, cicadas: 0.6, owl: 3, lofi: 0.7, piano: 1.9, pad: 2.4, guitar: 2.7, kalimba: 2.4, flute: 1.6, tanpura: 1.8, arp: 2.4, birds: 2.8, frogs: 2.4, crickets: 2.2, wind: 1.25, waves: 0.85, tinroof: 2.4, thunder: 3.3, stream: 1.35 };
 
 class NatureProcessor extends AudioWorkletProcessor {
   constructor() {
@@ -722,7 +883,7 @@ class NatureProcessor extends AudioWorkletProcessor {
     this.gens = {}; this.gain = {}; this.target = {};
     this.buf = [new Float32Array(128), new Float32Array(128), new Float32Array(128), new Float32Array(128)];
     this.events = []; this.harmony = new Harmony();
-    this.pulse = { hz: 0, depth: 0 }; this.pd = 0; this.pph = 0; this.phz = 14;
+    this.pulse = { hz: 0, depth: 0 }; this.pd = 0; this.pph = 0; this.phz = 14; this.split = new Float64Array(2); this.splitA = Math.exp(-TAU * 120 / SR);
     this.port.onmessage = e => {
       const { vol, pulse } = e.data;
       if (pulse) this.pulse = { hz: +pulse.hz || 0, depth: Math.max(0, Math.min(0.9, +pulse.depth || 0)) };
@@ -731,8 +892,8 @@ class NatureProcessor extends AudioWorkletProcessor {
   }
   emit(e) { this.events.push(e); }
   process(_in, outputs) {
-    const [dL, dR] = outputs[0], [wL, wR] = outputs[1], n = dL.length;
-    const [L, R, WL, WR] = this.buf, step = n / (SR * 1.2);   // 1.2 s fades
+    const dL = outputs[0][0], dR = outputs[0][1], wL = outputs[1][0], wR = outputs[1][1], n = dL.length;
+    const b = this.buf, L = b[0], R = b[1], WL = b[2], WR = b[3], step = n / (SR * 1.2);   // 1.2 s fades
     this.harmony.advance(n);
     for (const id in this.gens) {
       const tgt = this.target[id] || 0, g0 = this.gain[id];
@@ -753,10 +914,14 @@ class NatureProcessor extends AudioWorkletProcessor {
     if (wantD > 0 || this.pd > 0.0005) {
       if (this.pulse.hz > 0) this.phz += (this.pulse.hz - this.phz) * 0.05;
       const d0 = this.pd, d1 = d0 + (wantD - d0) * Math.min(1, n / (SR * 0.8)), inc = this.phz / SR;
+      // Only the part above ~120 Hz is modulated: the low end stays steady, so the pulse reads as a gentle
+      // flutter in the texture instead of the whole sound throbbing (less tiring over a long session).
+      const sp = this.split, a = this.splitA;
       for (let i = 0; i < n; i++) {
         this.pph += inc; if (this.pph > 1) this.pph -= 1;
         const c = 0.5 - 0.5 * fsin(this.pph + 0.25), d = d0 + (d1 - d0) * (i / n), g = 1 - d * c * c * (3 - 2 * c);
-        dL[i] *= g; dR[i] *= g; wL[i] *= g; wR[i] *= g;
+        sp[0] = dL[i] + (sp[0] - dL[i]) * a; sp[1] = dR[i] + (sp[1] - dR[i]) * a;
+        dL[i] = sp[0] + (dL[i] - sp[0]) * g; dR[i] = sp[1] + (dR[i] - sp[1]) * g; wL[i] *= g; wR[i] *= g;
       }
       this.pd = d1;
     }

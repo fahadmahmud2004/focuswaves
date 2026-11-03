@@ -19,34 +19,52 @@ const Audio_ = (() => {
     return ir;
   }
 
+  // Build the worklet node (again, if it ever crashes) and wire it into the graph.
+  function makeNode() {
+    node = new AudioWorkletNode(ctx, "nature", { numberOfInputs: 0, numberOfOutputs: 2, outputChannelCount: [2, 2] });
+    node.connect(dryLP, 0); node.connect(verb, 1);
+    node.port.onmessage = e => e.data.events && e.data.events.forEach(ev => listeners.forEach(f => f(ev)));
+    // A script error inside the audio thread silences the node for good; start a fresh one with the same state.
+    node.onprocessorerror = () => { try { node.disconnect(); } catch {} makeNode(); if (last.vol) node.port.postMessage({ vol: last.vol }); if (last.pulse) node.port.postMessage({ pulse: last.pulse }); };
+  }
+  const last = { vol: null, pulse: null };
+
   async function init() {
     if (ready) return ready;
     ready = (async () => {
-      ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "playback" });
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC || !("AudioWorkletNode" in window)) throw new Error("no AudioWorklet");
+      // iPhone: play through the silent switch, like a music app
+      try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+      ctx = new AC({ latencyHint: "playback" });
+      // Some PCs run their sound card at 96 or 192 kHz. Everything here is synthesised sample by sample, so that is
+      // 2 to 4 times the work for no audible gain, and slower machines start to stutter. Cap it at 48 kHz.
+      if (ctx.sampleRate > 48000) { try { const c2 = new AC({ latencyHint: "playback", sampleRate: 48000 }); ctx.close(); ctx = c2; } catch {} }
+      if (!ctx.audioWorklet) throw new Error("no AudioWorklet");
       await ctx.audioWorklet.addModule("nature-worklet.js");
-      node = new AudioWorkletNode(ctx, "nature", { numberOfInputs: 0, numberOfOutputs: 2, outputChannelCount: [2, 2] });
       master = ctx.createGain(); duck = ctx.createGain(); out = ctx.createGain();
       dryLP = ctx.createBiquadFilter(); dryLP.type = "lowpass"; dryLP.frequency.value = 18000; dryLP.Q.value = 0.5;
-      verb = ctx.createConvolver(); verb.buffer = impulse(ctx);
+      verb = ctx.createConvolver(); verb.buffer = impulse(ctx, 2.6);
       wet = ctx.createGain(); wet.gain.value = 0.5;
       const lim = ctx.createDynamicsCompressor();
       lim.threshold.value = -8; lim.knee.value = 6; lim.ratio.value = 10; lim.attack.value = 0.003; lim.release.value = 0.25;
-      node.connect(dryLP, 0); dryLP.connect(master);
-      node.connect(verb, 1); verb.connect(wet).connect(master);
+      dryLP.connect(master); verb.connect(wet).connect(master);
       master.connect(duck).connect(out); out.connect(lim).connect(ctx.destination);
-      node.port.onmessage = e => e.data.events && e.data.events.forEach(ev => listeners.forEach(f => f(ev)));
+      makeNode();
       return ctx;
     })();
+    ready.catch(() => { ready = null; });
     return ready;
   }
 
   return {
     init,
     get ctx() { return ctx; },
-    resume() { return ctx && ctx.state !== "running" ? ctx.resume() : Promise.resolve(); },
-    suspend() { return ctx && ctx.state === "running" ? ctx.suspend() : Promise.resolve(); },
-    setVolumes(vol) { node && node.port.postMessage({ vol }); },
-    setPulse(hz, depth) { node && node.port.postMessage({ pulse: { hz, depth } }); },
+    resume() { return ctx && ctx.state !== "running" ? ctx.resume().catch(() => {}) : Promise.resolve(); },
+    suspend() { return ctx && ctx.state === "running" ? ctx.suspend().catch(() => {}) : Promise.resolve(); },
+    setVolumes(vol) { last.vol = vol; node && node.port.postMessage({ vol }); },
+    setPulse(hz, depth) { last.pulse = { hz, depth }; node && node.port.postMessage({ pulse: last.pulse }); },
+    get state() { return ctx ? ctx.state : "none"; },
     setMaster(v) { master && master.gain.setTargetAtTime(v, ctx.currentTime, 0.08); },
     setDuck(v) { duck && duck.gain.setTargetAtTime(v, ctx.currentTime, 0.6); },
     // 0 = right next to you, 1 = room, 2 = far away

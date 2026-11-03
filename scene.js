@@ -8,7 +8,7 @@ const Scene = (() => {
   const cv = document.getElementById("scene"), g = cv.getContext("2d");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let W = 0, H = 0, dpr = 1, t = 0, last = performance.now();
-  const KEYS = ["gulls", "leaves", "cicadas", "owl", "rain", "tinroof", "thunder", "waves", "wind", "birds", "stream", "fire", "crickets", "frogs", "fan", "lofi", "piano", "pad", "white", "pink", "brown"];
+  const KEYS = ["gulls", "leaves", "cicadas", "owl", "guitar", "kalimba", "flute", "tanpura", "arp", "rain", "tinroof", "thunder", "waves", "wind", "birds", "stream", "fire", "crickets", "frogs", "fan", "lofi", "piano", "pad", "white", "pink", "brown"];
   const target = {}, lvl = {};
   KEYS.forEach(k => (target[k] = lvl[k] = 0));
   let windNow = 0.3, foam = 0, flash = 0, bolt = null, hourOverride = null, clockSpec = null, clockRect = null;
@@ -93,8 +93,16 @@ const Scene = (() => {
     return { segs, life: 1, near };
   }
 
+  // Slow machines: if frames run long, draw at a lower resolution. The sea is soft, so this is hard to see,
+  // and it keeps the CPU free for the sound engine (stutter on weak laptops often came from here).
+  let quality = 1; const perf = { n: 0, t: 0 };
+  function watchFps(dtMs) {
+    if (dtMs > 250) return;                             // tab was in the background
+    perf.n++; perf.t += dtMs;
+    if (perf.t > 3000) { const fps = perf.n / (perf.t / 1000); perf.n = perf.t = 0; if (fps < 42 && quality > 0.5) { quality = Math.max(0.5, quality * 0.75); resize(); } }
+  }
   function resize() {
-    dpr = Math.min(devicePixelRatio || 1, 2);
+    dpr = Math.min(devicePixelRatio || 1, 2) * quality;
     W = innerWidth; H = innerHeight;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -353,7 +361,7 @@ const Scene = (() => {
   function clockSprite(lines, fs, cols) {
     const key = lines.join("|") + fs.toFixed(1) + cols.map(c => c.map(v => v >> 3).join(",")).join(";");
     if (key === spr.key) return spr;
-    const c = spr.c, x = c.getContext("2d"), font = `ultra-condensed 560 ${fs}px Archivo, "Arial Narrow", sans-serif`, lh = fs * 0.8, pad = fs * 0.05;
+    const c = spr.c, x = c.getContext("2d"), font = `ultra-condensed 420 ${fs}px Archivo, "Arial Narrow", sans-serif`, lh = fs * 0.8, pad = fs * 0.05;
     x.font = font; const w = Math.max(...lines.map(l => x.measureText(l).width)) + pad * 2, h = lh * lines.length + pad * 2;
     c.width = Math.ceil(w); c.height = Math.ceil(h);
     x.font = font; x.textAlign = "center"; x.textBaseline = "alphabetic"; x.lineJoin = "round";
@@ -361,7 +369,7 @@ const Scene = (() => {
     lines.forEach((l, i) => { const y = pad + lh * (i + 1) - fs * 0.07; x.strokeText(l, w / 2, y); x.fillText(l, w / 2, y); });
     x.globalCompositeOperation = "source-in";
     const gr = x.createLinearGradient(0, 0, 0, h);
-    gr.addColorStop(0, rgb(cols[0], 0.97)); gr.addColorStop(0.55, rgb(cols[1], 0.86)); gr.addColorStop(1, rgb(cols[2], 0.72));
+    gr.addColorStop(0, rgb(cols[0], 0.98)); gr.addColorStop(0.6, rgb(cols[1], 0.93)); gr.addColorStop(1, rgb(cols[2], 0.84));
     x.fillStyle = gr; x.fillRect(0, 0, w, h);
     x.globalCompositeOperation = "source-over";
     Object.assign(spr, { key, w, h, lh, pad });
@@ -373,11 +381,11 @@ const Scene = (() => {
     // phones: hours over minutes, like a bedside clock; wide screens: one line
     const parts = text.split(":"), lines = narrow && parts.length >= 2 ? [parts.slice(0, -1).join(":"), parts[parts.length - 1]] : [text];
     const bottom = horizon + seaH * (narrow ? 0.3 : 0.34) + y, room = bottom - H * (narrow ? 0.17 : 0.2);
-    g.font = `ultra-condensed 560 100px Archivo, "Arial Narrow", sans-serif`;
+    g.font = `ultra-condensed 420 100px Archivo, "Arial Narrow", sans-serif`;
     const per100 = Math.max(...lines.map(l => g.measureText(l).width)) / 100;
     let fs = Math.min(room / (0.8 * lines.length), (W * (narrow ? 0.86 : 0.8)) / per100) * s * (narrow ? 0.82 : 0.66);   // a calmer default size
     const sky = mix(P.top, GREY, overcast * 0.4), hor = mix(P.hor, GREY, overcast * 0.4), lift = 0.25 * night;
-    const sp = clockSprite(lines, fs, [mix(sky, [255, 255, 255], 0.9), mix(hor, [255, 255, 255], 0.66 + lift), mix(hor, [255, 255, 255], 0.42 + lift)]);
+    const ivory = [250, 246, 236], sp = clockSprite(lines, fs, [mix(sky, ivory, 0.95), mix(hor, ivory, 0.84 + lift * 0.5), mix(hor, ivory, 0.66 + lift * 0.6)]);
     const dx = W / 2 + x - sp.w / 2, dy = bottom - sp.h + sp.pad + fs * 0.07;
     g.save();
     g.shadowColor = `rgba(0,0,0,${0.18 + night * 0.12})`; g.shadowBlur = fs * 0.07; g.shadowOffsetY = fs * 0.015;
@@ -453,7 +461,7 @@ const Scene = (() => {
   }
 
   function loop(now) {
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const dt = Math.min(0.05, (now - last) / 1000); watchFps(now - last); last = now;
     if (!document.hidden) draw(dt);
     requestAnimationFrame(loop);
   }

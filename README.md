@@ -29,7 +29,7 @@ Every push to `main` deploys automatically (Workers Builds runs `npx wrangler de
 - **Nature:** waves, wind, birds (koel, spotted dove, songbirds), stream, fireplace, seagulls, leaves, cicadas
 - **Rain & storm:** rain, tin roof, thunder
 - **Night:** crickets, frogs, owl
-- **Music (optional, folded away):** lofi beats, soft piano, ambient pad. All three follow one shared chord progression. **Music never plays while the Quran is playing**; nature sounds keep going.
+- **Music (optional, folded away):** lofi beats, soft piano, ambient pad, nylon guitar (fingerpicked, Karplus-Strong strings), kalimba, bansuri, tanpura drone, and a focus synth (even 16ths, no melody). The chord instruments follow one shared progression so they blend. **Music never plays while the Quran is playing**; nature sounds keep going.
 - **Focus noise:** fan, white, pink, brown
 
 Each one is a small simulation with random events and slowly drifting character, not a recording, so nothing loops.
@@ -37,7 +37,7 @@ Each one is a small simulation with random events and slowly drifting character,
 To change the curated mixes, edit `MIXES` in `sounds.js` (values 0 to 1; `cat` is nature, music or focus; `art` is the card colours).
 
 ## Deep focus (Focus pulse)
-A rhythmic amplitude modulation applied to the whole sound bed (the idea behind "neural phase locking": brain rhythms tend to follow
+A rhythmic amplitude modulation applied to the sound bed above ~120 Hz (the low end stays steady, so it reads as a flutter instead of a throb) (the idea behind "neural phase locking": brain rhythms tend to follow
 a steady rhythm in what you hear). Rates: Calm 6 Hz, Flow 10 Hz, Focus 14 Hz, Deep 16 Hz, with an intensity control.
 A binaural beat (headphones) follows the same rate. 13 "Deep focus" mixes set sounds + rate + intensity for a task
 (deep work, study, reading, memorizing, coding, problem solving, power nap, breaks...).
@@ -51,11 +51,19 @@ Volume and soft mode go through Web Audio when the audio host sends CORS headers
 If you later host the files on R2, add a CORS rule allowing `https://focus.freakingwaves.com` so soft mode works.
 
 ## Clock
-- Modes: **Timer** (focus / short / long breaks, custom minutes), **Stopwatch**, **Clock** (time with Gregorian, Bangla and Hijri dates).
-- Default face **Depth**: tall glass numerals painted inside the scene, standing in the sea, so the near waves and the palms pass in front of them (like a phone lock screen's depth effect). On phones the hours sit above the minutes.
-- Other faces: Bold, Tide (half under water), Glass, Clear, Mirror, Tall, Wide.
+- Modes: **Timer** (focus / short / long breaks, set with steppers), **Stopwatch**, **Clock** (time with Gregorian, Bangla and Hijri dates).
+- Digital faces: **Depth** (default: tall numerals painted inside the scene, the near waves and palms pass in front), **Serif** (Instrument Serif), **Light** (Inter Tight 200), **Mono** (DM Mono), **Frosted** (on a pane of real frosted glass).
+- Analog faces: **Minimal**, **Dial** (an ivory wall clock), **Ring** (progress ring). The timer shows the time left as a wedge, like a kitchen timer.
 - Drag the clock with one finger; pinch with two (or ctrl + trackpad pinch) to resize.
-- Sky: Auto (follows local time) or fixed Dawn / Day / Dusk / Night.
+- Sky: Auto (follows local time) or a slider through the whole day.
+- The Clock panel links to bro.freakingwaves.com for full-day routines.
+
+## Sound troubleshooting (no sound / stutter)
+- The engine is synthesised live, so it needs CPU. It caps the audio at 48 kHz (some PCs run at 96 or 192 kHz, which was 2 to 4 times the work),
+  avoids allocating memory on the audio thread, and the scene drops its resolution on slow machines.
+- If the browser suspends audio (sleep, headphones switched, autoplay rules), any tap or key resumes it, and the app says so.
+- If the audio thread ever throws, the engine restarts itself with the same mix.
+- Still silent: check the tab isn't muted, the output device, and that the browser is recent (AudioWorklet is required).
 
 ## Share links
 "Copy link to this mix" gives a link like `focus.freakingwaves.com/#mix=rain-60.waves-30`. Opening it loads that mix.

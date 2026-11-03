@@ -42,11 +42,21 @@
     const a = new Audio(URL.createObjectURL(new Blob([buf], { type: "audio/wav" }))); a.loop = true; a.setAttribute("playsinline", ""); a.volume = 0.01; return a;
   })();
 
+  /* Sound that should be playing but isn't: the browser suspended the audio (autoplay rules, the laptop slept,
+     headphones were switched, another tab took the device). Any tap or key brings it back; if that doesn't
+     happen on its own, say so instead of sitting silent. */
+  const wantSound = () => playing || quranActive();
+  const revive = () => { if (started && wantSound() && Audio_.state !== "running") Audio_.resume(); };
+  ["pointerdown", "keydown", "touchend"].forEach(ev => addEventListener(ev, revive, { capture: true, passive: true }));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) revive(); });
+  let checkT;
+  const checkSound = () => { clearTimeout(checkT); checkT = setTimeout(() => { if (started && playing && Audio_.state !== "running" && Audio_.state !== "none") { Audio_.resume(); toast(t("tapForSound")); } }, 1800); };
+
   let suspendT;
   function setPlaying(on) {
     if (on && !anyOn()) applyMix(MIXES[0].mix, MIXES[0].id, false);
     playing = on; clearTimeout(suspendT);
-    if (on) { Audio_.resume(); Audio_.setMaster(+mv.value); keepAlive.play().catch(() => {}); }
+    if (on) { Audio_.resume(); Audio_.setMaster(+mv.value); keepAlive.play().catch(() => {}); checkSound(); }
     else suspendT = setTimeout(() => { if (!playing && !quranActive()) { Audio_.suspend(); keepAlive.pause(); } }, 1600);
     document.body.classList.toggle("is-playing", on);
     $("#playBtn").setAttribute("aria-label", t(on ? "pauseSounds" : "play"));
@@ -79,7 +89,7 @@
       if (e.target.closest("input, button, select")) return;
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pts.size === 2) { drag = null; pinch = { d: dist(), s: L0.s }; focusBox.classList.add("dragging"); }
-      else if (pts.size === 1 && e.target === ck) { drag = { x: e.clientX, y: e.clientY, ox: L0.x, oy: L0.y, moved: false }; ck.setPointerCapture(e.pointerId); }
+      else if (pts.size === 1 && (e.target === ck || e.target.closest("#analog"))) { drag = { x: e.clientX, y: e.clientY, ox: L0.x, oy: L0.y, moved: false }; e.target.setPointerCapture(e.pointerId); }
     });
     addEventListener("pointermove", e => {
       if (!pts.has(e.pointerId)) return;
@@ -247,22 +257,28 @@
   const saveT = () => store.set("timer", T);
   const F = { mode: "focus", remaining: T.focus * 60, endAt: 0, running: false, iv: null, done: store.get("cycle", 0) };
   const total = () => (F.mode === "focus" ? T.focus : F.mode === "long" ? T.long : T.short) * 60;
-  function buildOpts(elId, key, presets, max) {
+  /* lengths: a stepper per row (hold a button to run), with the value large and readable */
+  function buildOpts(elId, key, step, min, max) {
     const box = $(elId); box.innerHTML = "";
-    presets.forEach(v => { const b = document.createElement("button"); b.textContent = v; b.dataset.v = v; b.onclick = () => setLen(key, v); box.appendChild(b); });
-    const inp = document.createElement("input"); inp.type = "number"; inp.min = 1; inp.max = max; inp.inputMode = "numeric"; inp.placeholder = "…"; inp.setAttribute("aria-label", t("custom"));
-    inp.addEventListener("change", () => { const v = Math.round(+inp.value); if (v >= 1 && v <= max) setLen(key, v); });
-    box.appendChild(inp);
-    paintOpts(elId, key, presets);
+    box.innerHTML = `<button class="stp" data-d="-1" aria-label="−"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button><output></output><button class="stp" data-d="1" aria-label="+"><svg viewBox="0 0 24 24"><path d="M6 12h12M12 6v12"/></svg></button>`;
+    box.querySelectorAll(".stp").forEach(b => {
+      let rep = null;
+      const once = () => { const v = T[key], d = +b.dataset.d, st = v < step || (d < 0 && v <= step) ? 1 : step;
+        const nv = d > 0 ? (v < step ? v + 1 : Math.floor(v / st) * st + st) : (v <= step ? v - 1 : Math.ceil(v / st) * st - st); setLen(key, Math.max(min, Math.min(max, nv))); };
+      const stop = () => { clearTimeout(rep); rep = null; };
+      b.addEventListener("pointerdown", e => { e.preventDefault(); once(); const go = (ms) => (rep = setTimeout(() => { once(); go(Math.max(60, ms * 0.8)); }, ms)); go(420); });
+      ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, stop));
+      b.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); once(); } });
+    });
+    paintOpts(elId, key);
   }
-  function paintOpts(elId, key, presets) {
-    const box = $(elId), v = T[key], isPreset = presets.includes(v);
-    box.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.v === v));
-    const inp = box.querySelector("input"); inp.classList.toggle("on", !isPreset); if (!isPreset) inp.value = v; else if (document.activeElement !== inp) inp.value = "";
+  function paintOpts(elId, key) {
+    const o = $(elId).querySelector("output"), v = T[key];
+    o.innerHTML = `<b></b><span></span>`; o.querySelector("b").textContent = LANG === "bn" ? bnDigits(v) : v; o.querySelector("span").textContent = t("min");
   }
-  const OPTS = [["#optFocus", "focus", [15, 25, 45, 60, 90], 240], ["#optShort", "short", [5, 10, 15], 60], ["#optLong", "long", [15, 20, 30], 90]];
+  const OPTS = [["#optFocus", "focus", 5, 1, 240], ["#optShort", "short", 5, 1, 60], ["#optLong", "long", 5, 1, 90]];
   function setLen(key, v) {
-    T[key] = v; saveT(); OPTS.forEach(o => paintOpts(o[0], o[1], o[2]));
+    T[key] = v; saveT(); OPTS.forEach(o => paintOpts(o[0], o[1]));
     const affects = (key === "focus" && F.mode === "focus") || (key === "short" && F.mode === "break") || (key === "long" && F.mode === "long");
     if (affects && !F.running) { F.remaining = total(); paint(); }
   }
@@ -275,7 +291,7 @@
   /* Depth face: the scene paints the clock inside the sea; the DOM clock becomes an invisible handle on top of it */
   function depthClock() {
     const on = face === "depth"; document.body.classList.toggle("depth", on);
-    Scene.setClock(on ? { text: clock.textContent, x: L0.x, y: L0.y, s: L0.s } : null);
+    Scene.setClock(on && started ? { text: clock.textContent, x: L0.x, y: L0.y, s: L0.s } : null);
     placeHandle();
   }
   function placeHandle() {
@@ -284,7 +300,7 @@
     else ["left", "top", "width", "height"].forEach(k => (clock.style[k] = ""));
   }
   setInterval(placeHandle, 300); addEventListener("resize", () => setTimeout(placeHandle, 50)); onLayout = depthClock;
-  function paint() { paintCore(); depthClock(); }
+  function paint() { paintCore(); depthClock(); paintAnalog(); }
   function paintCore() {
     const digits = s => (face === "bangla" ? bnDigits(s) : s);
     if (CM === "clock") {
@@ -381,26 +397,109 @@
   function swReset() { if (SW.running) swPause(); SW.acc = 0; SW.logged = 0; store.set("swAcc", 0); paint(); }
   setInterval(() => { if (CM !== "timer") paint(); }, 250);
 
-  const FACES = [["depth"], ["bold"], ["tide"], ["glass"], ["clear"], ["mirror"], ["tall"], ["wide"]];
+  // [id, google font to load (if any), kind]. Fewer faces, each with one clear idea:
+  // Depth stands in the sea, Serif is quiet and editorial, Light is thin and airy, Mono is a calm instrument,
+  // Frosted sits on a real pane of frosted glass. Minimal, Dial and Ring are analog.
+  const TIGHT = "Inter+Tight:wght@200;300;400";
+  const FACES = [["depth", null, "d"], ["serif", null, "d"], ["light", TIGHT, "d"], ["mono", "DM+Mono:wght@300;400", "d"],
+    ["frost", TIGHT, "d"], ["minimal", TIGHT, "a"], ["dial", TIGHT, "a"], ["ring", TIGHT, "a"]];
   if (store.get("faceV", 0) < 2) { store.set("face", "depth"); store.set("faceV", 2); }      // the redesign makes Depth the default once
-  let face = store.get("face", "depth"); if (!FACES.some(f => f[0] === face)) face = "depth";
+  let face = store.get("face", "depth"); if (!FACES.some(f => f[0] === face)) face = "depth";    // older faces were retired
+  const isAnalog = () => (FACES.find(f => f[0] === face) || [])[2] === "a";
   const loaded = new Set();
   const loadFont = f => { if (!f || loaded.has(f)) return; loaded.add(f); const l = document.createElement("link"); l.rel = "stylesheet"; l.href = `https://fonts.googleapis.com/css2?family=${f}&display=swap`; document.head.appendChild(l); };
   function buildFaces() {
     const box = $("#faces"); box.innerHTML = "";
-    FACES.forEach(([id, font]) => {
+    FACES.forEach(([id, font, kind]) => {
+      loadFont(font);
       const b = document.createElement("button"); b.dataset.face = id; b.setAttribute("aria-pressed", id === face);
-      b.innerHTML = id === "depth" ? `<b class="dpv">25:00<i></i></b><small></small>` : `<b>25:00</b><small></small>`; b.querySelector("small").textContent = t("faceNames")[id];
-      b.onclick = () => { face = id; store.set("face", id); loadFont(font); clock.dataset.face = id; buildFaces(); paint(); };
+      b.innerHTML = kind === "a" ? `<span class="fprev">${analogSVG(id, true)}</span><small></small>`
+        : id === "depth" ? `<span class="fprev"><b class="dpv">25<i></i></b></span><small></small>` : `<span class="fprev"><b>25</b></span><small></small>`;
+      b.querySelector("small").textContent = t("faceNames")[id];
+      b.onclick = () => { face = id; store.set("face", id); applyFace(); buildFaces(); paint(); };
       box.appendChild(b);
     });
   }
-  loadFont((FACES.find(f => f[0] === face) || [])[1]); clock.dataset.face = face;
+  function applyFace() {
+    clock.dataset.face = face; loadFont((FACES.find(f => f[0] === face) || [])[1]);
+    const a = isAnalog(), an = $("#analog");
+    document.body.classList.toggle("analog-face", a); an.hidden = !a;
+    if (a && an.dataset.kind !== face) { an.dataset.kind = face; an.innerHTML = analogSVG(face) + `<div class="an-digital"></div>`; }
+    if (a) startAnalog();
+  }
 
-  const SKY = { auto: null, dawn: 6.5, day: 12, dusk: 18.3, night: 23 };
-  let sky = store.get("sky", "auto");
-  const paintSky = () => { $$("#skySeg button").forEach(b => b.setAttribute("aria-checked", b.dataset.v === sky)); Scene.setHour(SKY[sky] ?? null); };
-  $$("#skySeg button").forEach(b => b.addEventListener("click", () => { sky = b.dataset.v; store.set("sky", sky); paintSky(); }));
+  /* ---- analog faces: Minimal (ticks and slim hands), Dial (an ivory wall clock), Ring (a progress ring).
+     Clock mode shows the time; the timer shows what's left as a wedge (or the ring), like a kitchen timer;
+     the stopwatch sweeps the seconds. ---- */
+  function analogSVG(kind, mini) {
+    let ticks = "";
+    if (kind !== "ring") for (let i = 0; i < 60; i++) {
+      const hr = i % 5 === 0; if (mini && !hr) continue;
+      const a = i * 6 * Math.PI / 180, r1 = kind === "dial" ? 86 : 94, r0 = r1 - (hr ? (kind === "dial" ? 13 : 8) : 3);
+      const p = r => `${(Math.sin(a) * r).toFixed(2)} ${(-Math.cos(a) * r).toFixed(2)}`;
+      ticks += `<path class="${hr ? (i % 15 === 0 ? "tk-h tk-q" : "tk-h") : "tk-m"}" d="M${p(r0)} L${p(r1)}"/>`;
+    }
+    const base = kind === "dial" ? `<circle class="an-disc" r="97"/>` : kind === "ring" ? `<circle class="an-track" r="90"/>` : `<circle class="an-glass" r="99"/>`;
+    const ring = kind === "ring" ? `<circle class="an-arc" r="90" transform="rotate(-90)" pathLength="1000" stroke-dasharray="1000" stroke-dashoffset="${mini ? 330 : 1000}"/>` : "";
+    const wedge = kind === "ring" ? "" : `<path class="an-wedge" d=""/>`;
+    const hands = kind === "ring" ? "" : mini
+      ? `<g class="an-hands"><path class="an-h" d="M0 8 L0 -44" transform="rotate(300)"/><path class="an-m" d="M0 10 L0 -70" transform="rotate(60)"/><circle class="an-c" r="5"/></g>`
+      : `<g class="an-hands"><path class="an-h" d="M0 12 L0 -48"/><path class="an-m" d="M0 14 L0 -74"/><path class="an-s" d="M0 20 L0 -82"/><circle class="an-c" r="${kind === "dial" ? 4.5 : 3.4}"/></g>`;
+    return `<svg viewBox="-100 -100 200 200" class="an an-${kind}" aria-hidden="true">${base}${wedge}${ring}${ticks}${hands}</svg>`;
+  }
+  function wedgePath(f, kind) {
+    const r = kind === "dial" ? 72 : 80; f = Math.max(0, Math.min(1, f));
+    if (f <= 0.0005) return "";
+    if (f >= 0.9995) return `M0 ${-r} A${r} ${r} 0 1 1 0 ${r} A${r} ${r} 0 1 1 0 ${-r} Z`;
+    const a = f * 2 * Math.PI, x = (Math.sin(a) * r).toFixed(2), y = (-Math.cos(a) * r).toFixed(2);
+    return `M0 0 L0 ${-r} A${r} ${r} 0 ${f > 0.5 ? 1 : 0} 1 ${x} ${y} Z`;
+  }
+  let anRaf = 0;
+  function startAnalog() { if (!anRaf) anRaf = requestAnimationFrame(analogLoop); }
+  function analogLoop() { anRaf = 0; if (!isAnalog()) return; paintAnalog(); if (!document.hidden) startAnalog(); else setTimeout(startAnalog, 1000); }
+  function paintAnalog() {
+    if (!isAnalog()) return;
+    const an = $("#analog"), svg = an.querySelector("svg"); if (!svg) return;
+    const q = sel => svg.querySelector(sel);
+    const rot = (sel, deg) => { const el = q(sel); if (el) el.setAttribute("transform", `rotate(${deg.toFixed(2)})`); };
+    const show = (sel, on) => { const el = q(sel); if (el) el.style.display = on ? "" : "none"; };
+    let frac = 0, text = "", wedge = "";
+    if (CM === "clock") {
+      const d = new Date(), s = d.getSeconds() + d.getMilliseconds() / 1000, m = d.getMinutes() + s / 60, h = (d.getHours() % 12) + m / 60;
+      rot(".an-h", h * 30); rot(".an-m", m * 6); rot(".an-s", s * 6); show(".an-h", 1); show(".an-m", 1); show(".an-s", 1);
+      frac = m / 60; text = face === "ring" ? clock.textContent : "";
+    } else if (CM === "stopwatch") {
+      const e = swElapsed(); rot(".an-m", (e / 60) * 6); rot(".an-s", (e % 60) * 6); show(".an-h", 0); show(".an-m", 1); show(".an-s", 1);
+      frac = (e % 60) / 60; text = clock.textContent;
+    } else {
+      const TT = total(), rem = F.running ? Math.max(0, (F.endAt - Date.now()) / 1000) : F.remaining, scale = TT <= 3600 ? 3600 : TT;
+      wedge = wedgePath(rem / scale, face); show(".an-h", 0); show(".an-m", 0); show(".an-s", 0);
+      frac = rem / TT; text = clock.textContent;
+    }
+    const w = q(".an-wedge"); if (w && w.getAttribute("d") !== wedge) w.setAttribute("d", wedge);
+    const arc = q(".an-arc"); if (arc) arc.setAttribute("stroke-dashoffset", (1000 * (1 - frac)).toFixed(1));
+    const dig = an.querySelector(".an-digital"); if (dig.textContent !== text) dig.textContent = text;
+    an.dataset.mode = CM; an.classList.toggle("break", CM === "timer" && F.mode !== "focus");
+  }
+
+  /* ---- sky: Auto follows local time; the slider sets any hour, and the scene blends smoothly between them ---- */
+  const OLD_SKY = { dawn: 6.5, day: 12, dusk: 18.3, night: 23 };
+  let sky = store.get("sky", "auto"); if (OLD_SKY[sky]) sky = OLD_SKY[sky]; if (sky !== "auto" && !(sky >= 0 && sky <= 24)) sky = "auto";
+  const skyIn = $("#skyHour"), skyAuto = $("#skyAuto");
+  const nowHour = () => { const d = new Date(); return d.getHours() + d.getMinutes() / 60; };
+  const phaseOf = h => t(h < 4.6 || h >= 20.5 ? "night" : h < 7.5 ? "dawn" : h < 17.4 ? "day" : "dusk");
+  const hourLabel = h => { h = ((h % 24) + 24) % 24; const H = Math.floor(h), M = Math.floor((h - H) * 12) * 5, mm = String(M).padStart(2, "0");
+    const s = h24.checked ? `${String(H).padStart(2, "0")}:${mm}` : `${H % 12 || 12}:${mm} ${H < 12 ? "AM" : "PM"}`; return LANG === "bn" ? bnDigits(s) : s; };
+  function paintSky() {
+    const auto = sky === "auto", h = auto ? nowHour() : sky;
+    skyAuto.checked = auto; if (document.activeElement !== skyIn || auto) skyIn.value = h;
+    $("#skyOut").textContent = `${hourLabel(h)} · ${phaseOf(h)}`;
+    skyIn.closest(".sky-slider").classList.toggle("auto", auto);
+    Scene.setHour(auto ? null : sky);
+  }
+  skyIn.addEventListener("input", () => { sky = +skyIn.value; store.set("sky", sky); paintSky(); });
+  skyAuto.addEventListener("change", () => { sky = skyAuto.checked ? "auto" : +skyIn.value; store.set("sky", sky); paintSky(); });
+  setInterval(() => sky === "auto" && paintSky(), 30000);
   paintSky();
 
   /* ---- zen (automatic, while focusing and idle) and hide (manual) ---- */
@@ -528,7 +627,7 @@
 
   function relabel() {
     applyI18n(); buildSounds(); buildFaces(); OPTS.forEach(o => buildOpts(...o)); if (openName === "mixes") renderMixes();
-    paintDockMix(); paint(); paintStats(); sharedNote(); applyQuranOut(); if (!started && typeof buildPicks === "function") { greet(); buildPicks(); }
+    paintDockMix(); paint(); paintStats(); sharedNote(); applyQuranOut(); paintSky(); if (!started && typeof buildPicks === "function") { greet(); buildPicks(); }
     $("#playBtn").setAttribute("aria-label", t(playing ? "pauseSounds" : "play"));
   }
   function setLang() { LANG = LANG === "en" ? "bn" : "en"; try { localStorage.setItem("fw:lang", LANG); } catch {} relabel(); }
@@ -562,7 +661,7 @@
     if (started) return; started = true;
     try { await Audio_.init(); Audio_.setSpace(space); } catch (err) { console.error(err); toast(t("noAudio")); }
     Audio_.onEvent(Scene.event);
-    $("#intro").classList.add("gone"); document.body.classList.remove("pre");
+    $("#intro").classList.add("gone"); document.body.classList.remove("pre"); paint();
     if (shared) { applyMix(shared, null, false, shared.pulse); history.replaceState(null, "", location.pathname); toast(t("sharedLoaded")); }
     setPlaying(true);
   }
@@ -577,6 +676,7 @@
   }
   function greet() { const h = new Date().getHours(); $("#greet").textContent = t(h >= 4 && h < 12 ? "gMorning" : h < 16 ? "gNoon" : h < 19 ? "gEvening" : "gNight"); }
   const PICKS = ["coxs", "borsha", "bhor", "sheet"];
+  const mixHex = (a, b, f) => "#" + [1, 3, 5].map(i => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - f) + parseInt(b.slice(i, i + 2), 16) * f).toString(16).padStart(2, "0")).join("");
   let picked = null;
   function buildPicks() {
     const box = $("#picks"); box.innerHTML = "";
@@ -587,7 +687,7 @@
     if (!picked) picked = hasLast ? "__last" : (PICKS.includes(store.get("activeMix", "")) ? store.get("activeMix", "") : "coxs");
     items.slice(0, 4).forEach(it => {
       const b = document.createElement("button"); b.className = "pick"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", it.id === picked);
-      b.innerHTML = `<i></i><span></span>`; b.querySelector("i").style.background = `linear-gradient(180deg, ${it.art[0]} 0 52%, ${it.art[1]} 52%)`; b.querySelector("span").textContent = it.name;
+      b.innerHTML = `<i></i><span></span>`; b.querySelector("i").style.background = `linear-gradient(180deg, ${it.art[0]} 0%, ${mixHex(it.art[0], it.art[1], 0.3)} 56%, ${it.art[1]} 56%, ${mixHex(it.art[1], "#000000", 0.4)} 100%)`; b.querySelector("span").textContent = it.name;
       b.onclick = () => { picked = it.id; applyMix(it.mix, it.id === "__last" ? store.get("activeMix", null) : it.id, false, it.id === "__last" ? undefined : null); buildPicks(); };
       box.appendChild(b);
     });
@@ -600,6 +700,6 @@
   else if (saved && Object.keys(saved).length) applyMix(saved, store.get("activeMix", null), false);
   else applyMix(MIXES[0].mix, MIXES[0].id, false);
   if (cur && !cur.getAttribute("src")) { attempts = quranSources(RECITERS[+recSel.value], +surahSel.value).flatMap(url => [{ url, el: qA }, { url, el: qB }]); attemptIdx = 0; }
-  F.remaining = total(); paintMode(); paint(); greet(); buildPicks();
+  F.remaining = total(); applyFace(); paintMode(); paint(); greet(); buildPicks();
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js");
 })();

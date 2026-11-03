@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="Focus Waves">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=Hind+Siliguri:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,200..800&family=Hind+Siliguri:wght@400;500;600&family=Inter:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="pre">
@@ -26,16 +26,17 @@
 <!-- ============ INTRO ============ -->
 <div class="intro" id="intro">
   <div class="intro-in">
-    <img class="intro-mark" src="brand/logo.png" alt="" width="76" height="76">
     <p class="intro-greet" id="greet"></p>
     <h1 class="intro-word" aria-label="Focus Waves"><span class="w" aria-hidden="true"></span></h1>
     <p class="intro-line" data-t="tagline">Sit by the sea. Get your work done.</p>
+    <p class="intro-pick-label" data-t="pickMix">Choose where to start</p>
     <div class="picks" id="picks" role="radiogroup" data-t-aria="pickMix"></div>
-    <button class="begin" id="beginBtn"><span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span data-t="begin">Begin</span>
+    <button class="begin" id="beginBtn"><span data-t="begin">Begin</span>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
     <p class="intro-sub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg><span data-t="headphones">Best with headphones</span></p>
     <p class="intro-shared" id="introShared" hidden></p>
   </div>
+  <a class="intro-brand" href="https://freakingwaves.com" aria-label="Freaking Waves"><img src="brand/logo.png" alt="" width="30" height="30"><span>Focus Waves</span></a>
   <button class="intro-lang" id="introLang" data-t="langBtn">বাং</button>
   <p class="intro-foot"><span data-t="introFoot">Free · No sign-up · Made in Bangladesh</span> · <a href="https://freakingwaves.com">Freaking Waves</a></p>
 </div>
@@ -55,7 +56,8 @@
 <main class="focus" id="focus"><div class="focus-in">
   <input id="intent" class="intent" type="text" maxlength="60" data-t-ph="intent" data-t-aria="intent" autocomplete="off">
   <div class="mode" id="modeLabel">Focus</div>
-  <div class="clock" id="clock" role="timer" data-face="bold">25:00</div>
+  <div class="clock" id="clock" role="timer" data-face="serif">25:00</div>
+  <div class="analog" id="analog" hidden aria-hidden="true"></div>
   <div class="date-line" id="dateLine" hidden></div>
   <div class="progress" aria-hidden="true"><div id="progFill"></div></div>
   <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -106,18 +108,17 @@
   </section>
 
   <section class="panel narrow" id="p-clock" hidden>
-    <div class="p-head"><h2 data-t="clockTitle">Clock</h2></div>
-    <div class="seg wide" id="modeSeg" role="radiogroup" data-t-aria="clockTitle">
-      <button role="radio" data-v="timer" data-t="modeTimer">Timer</button><button role="radio" data-v="stopwatch" data-t="modeStopwatch">Stopwatch</button><button role="radio" data-v="clock" data-t="modeClock">Clock</button>
-    </div>
-    <h3 class="sub" data-t="face">Face</h3>
-    <div class="faces" id="faces"></div>
+    <div class="p-head"><h2 data-t="clockTitle">Clock</h2>
+      <div class="tabs" id="modeSeg" role="radiogroup" data-t-aria="clockTitle">
+        <button role="radio" data-v="timer" data-t="modeTimer">Timer</button><button role="radio" data-v="stopwatch" data-t="modeStopwatch">Stopwatch</button><button role="radio" data-v="clock" data-t="modeClock">Clock</button>
+      </div></div>
+    <div class="faces" id="faces" role="group" data-t-aria="face"></div>
     <div id="timerOpts">
-      <div class="t-row"><span class="t-label" data-t="focusLen">Focus</span><div class="t-opts" id="optFocus"></div></div>
-      <div class="t-row"><span class="t-label" data-t="shortLen">Short break</span><div class="t-opts" id="optShort"></div></div>
-      <div class="t-row"><span class="t-label" data-t="longLen">Long break</span><div class="t-opts" id="optLong"></div></div>
+      <div class="t-row"><span class="t-label" data-t="focusLen">Focus</span><div class="t-step" id="optFocus"></div></div>
+      <div class="t-row"><span class="t-label" data-t="shortLen">Short break</span><div class="t-step" id="optShort"></div></div>
+      <div class="t-row"><span class="t-label" data-t="longLen">Long break</span><div class="t-step" id="optLong"></div></div>
       <label class="switch"><input type="checkbox" id="autoBreak" checked><span></span><em data-t="autoBreak">Start breaks automatically</em></label>
-      <p class="hint" data-t="cycleHint">Every 4th break is a long one.</p>
+      <p class="hint flush" data-t="cycleHint">Every 4th break is a long one.</p>
     </div>
     <div id="clockOpts" hidden>
       <label class="switch"><input type="checkbox" id="h24"><span></span><em data-t="h24">24-hour clock</em></label>
@@ -126,11 +127,15 @@
     <div class="size-row"><span>A</span><input id="clockSize" type="range" min="0.5" max="1.5" step="0.01" value="1" data-t-aria="size"><span class="big-a">A</span>
       <button class="text-btn" id="layoutReset" data-t="resetPos">Reset</button></div>
     <p class="hint flush" data-t="dragHint">Drag the clock to move it anywhere.</p>
-    <h3 class="sub" data-t="sky">Sky</h3>
-    <div class="seg wide" id="skySeg" role="radiogroup" data-t-aria="sky">
-      <button role="radio" data-v="auto" data-t="auto">Auto</button><button role="radio" data-v="dawn" data-t="dawn">Dawn</button><button role="radio" data-v="day" data-t="day">Day</button><button role="radio" data-v="dusk" data-t="dusk">Dusk</button><button role="radio" data-v="night" data-t="night">Night</button>
-    </div>
+    <div class="sky-head"><h3 class="sub" data-t="sky">Sky</h3>
+      <label class="switch small"><input type="checkbox" id="skyAuto"><span></span><em data-t="auto">Auto</em></label></div>
+    <div class="sky-slider"><input id="skyHour" type="range" min="0" max="24" step="0.05" value="12" data-t-aria="sky"><output id="skyOut"></output></div>
+    <div class="sky-marks" aria-hidden="true"><span data-t="night">Night</span><span data-t="dawn">Dawn</span><span data-t="day">Day</span><span data-t="dusk">Dusk</span><span data-t="night">Night</span></div>
     <p class="hint flush" data-t="skyHint">Auto follows the time where you are.</p>
+    <a class="bro" href="https://bro.freakingwaves.com" target="_blank" rel="noopener">
+      <span class="bro-txt"><b data-t="broTitle">Want the full experience?</b><span data-t="broBody">Full-day focus and world-class, science-based routines.</span><em>bro.freakingwaves.com</em></span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+    </a>
   </section>
 
   <section class="panel narrow" id="p-quran" hidden>
@@ -156,7 +161,7 @@
     </div>
     <label class="switch"><input type="checkbox" id="qSoft" checked><span></span><em data-t="qSoft">Soft and distant</em></label>
     <p class="hint" id="qSoftHint" data-t="qSoftHint">Like hearing it from the mosque across the field.</p>
-    <label class="switch"><input type="checkbox" id="qAuto" checked><span></span><em data-t="auto">Continue to next surah</em></label>
+    <label class="switch"><input type="checkbox" id="qAuto" checked><span></span><em data-t="qNext">Continue to next surah</em></label>
     <label class="switch"><input type="checkbox" id="qRepeat"><span></span><em data-t="repeat">Repeat this surah</em></label>
     <audio id="qAudio" preload="none" crossorigin="anonymous"></audio>
     <audio id="qAudioPlain" preload="none"></audio>
