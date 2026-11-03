@@ -128,9 +128,11 @@ html[lang="bn"] .mode { letter-spacing: 0; text-transform: none; font-size: 15px
 .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--fill-3); transition: background .4s; }
 .dots i.done { background: var(--ink); }
 .actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; transition: opacity .6s; }
-.primary { border: 0; border-radius: 999px; padding: 14px 32px; font-weight: 600; letter-spacing: .005em; background: var(--ink); color: var(--char);
+/* Start: a quiet pane of glass, so it never competes with the clock */
+.primary { border: 0; border-radius: 999px; padding: 13px 30px; font-weight: 500; letter-spacing: .01em; background: rgba(246,242,231,.12); color: var(--ink);
+  backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%); text-shadow: 0 1px 8px rgba(0,0,0,.25);
   box-shadow: 0 12px 34px rgba(0,0,0,.24); transition: transform .2s var(--ease), box-shadow .25s; }
-.primary:hover { transform: translateY(-1px); box-shadow: 0 16px 40px rgba(0,0,0,.3); }
+.primary:hover { transform: translateY(-1px); background: rgba(246,242,231,.2); box-shadow: 0 16px 40px rgba(0,0,0,.24); }
 .primary:active, .play:active { transform: scale(.96); }
 .ghosted { width: 46px; height: 46px; }
 
@@ -316,6 +318,10 @@ html[lang="bn"] .bro-txt b { font-family: "Hind Siliguri", sans-serif; font-weig
 .focus-in { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; translate: var(--fx) var(--fy); scale: var(--fs); transition: scale .2s var(--ease); }
 .focus.dragging .focus-in { transition: none; }
 .clock { touch-action: none; user-select: none; -webkit-user-select: none; }
+.clock, .analog { opacity: var(--fo, 1); transition: opacity .2s; }
+body.depth .clock { opacity: 1; }
+.op-row output { min-width: 40px; text-align: right; font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.op-row > span { font-size: 12.5px !important; min-width: 56px; }
 .focus.dragging .clock, .focus.dragging .analog { cursor: grabbing; }
 
 .clock[data-face="serif"] { font-family: var(--serif); font-weight: 400; letter-spacing: -.02em; }

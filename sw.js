@@ -1,6 +1,6 @@
 // Offline support for the app shell. Network first, so every deploy shows up immediately.
 // Quran audio streams from its CDN and is never cached.
-const CACHE = "focuswaves-v13";
+const CACHE = "focuswaves-v14";
 const FILES = ["/", "/index.html", "/style.css", "/app.js", "/i18n.js", "/sounds.js", "/quran.js", "/scene.js",
   "/audio.js", "/nature-worklet.js", "/manifest.webmanifest", "/brand/logo.png", "/brand/fw-icon-192.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });

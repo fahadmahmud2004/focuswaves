@@ -78,7 +78,8 @@
   /* ---- the clock block can be resized and dragged anywhere; a plain click opens the Clock panel ---- */
   const focusBox = $("#focus"), L0 = Object.assign({ x: 0, y: 0, s: 1 }, store.get("layout", {}));
   let onLayout = () => {};                            // set once the clock face exists (Depth repositions the painted clock)
-  const applyLayout = () => { focusBox.style.setProperty("--fx", L0.x + "px"); focusBox.style.setProperty("--fy", L0.y + "px"); focusBox.style.setProperty("--fs", L0.s); onLayout(); };
+  let clockOp = store.get("clockOpacity", 1);                 // 0..1, how visible the clock / timer is
+  const applyLayout = () => { focusBox.style.setProperty("--fx", L0.x + "px"); focusBox.style.setProperty("--fy", L0.y + "px"); focusBox.style.setProperty("--fs", L0.s); focusBox.style.setProperty("--fo", clockOp); onLayout(); };
   const clampLayout = () => { const mx = innerWidth / 2 - 60, my = innerHeight / 2 - 60; L0.x = Math.max(-mx, Math.min(mx, L0.x)); L0.y = Math.max(-my, Math.min(my, L0.y)); };
   /* one finger on the clock drags it; two fingers anywhere in the middle pinch it bigger or smaller;
      a trackpad pinch (ctrl + wheel) does the same on a laptop. A plain tap on the clock opens the Clock panel. */
@@ -110,6 +111,9 @@
   }
   const sizeIn = $("#clockSize"); sizeIn.value = L0.s; setP(sizeIn);
   sizeIn.max = 1.6; sizeIn.addEventListener("input", () => { L0.s = +sizeIn.value; setP(sizeIn); applyLayout(); store.set("layout", L0); });
+  const opIn = $("#clockOpacity"), paintOp = () => { opIn.value = clockOp; setP(opIn); const v = Math.round(clockOp * 100) + "%"; $("#opOut").textContent = LANG === "bn" ? v.replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[d]) : v; };
+  opIn.addEventListener("input", () => { clockOp = +opIn.value; store.set("clockOpacity", clockOp); paintOp(); applyLayout(); });
+  paintOp();
   $("#layoutReset").addEventListener("click", () => { Object.assign(L0, { x: 0, y: 0, s: 1 }); sizeIn.value = 1; setP(sizeIn); applyLayout(); store.set("layout", L0); });
   addEventListener("resize", () => { clampLayout(); applyLayout(); });
   applyLayout();
@@ -291,7 +295,7 @@
   /* Depth face: the scene paints the clock inside the sea; the DOM clock becomes an invisible handle on top of it */
   function depthClock() {
     const on = face === "depth"; document.body.classList.toggle("depth", on);
-    Scene.setClock(on && started ? { text: clock.textContent, x: L0.x, y: L0.y, s: L0.s } : null);
+    Scene.setClock(on && started ? { text: clock.textContent, x: L0.x, y: L0.y, s: L0.s, o: clockOp } : null);
     placeHandle();
   }
   function placeHandle() {
@@ -627,7 +631,7 @@
 
   function relabel() {
     applyI18n(); buildSounds(); buildFaces(); OPTS.forEach(o => buildOpts(...o)); if (openName === "mixes") renderMixes();
-    paintDockMix(); paint(); paintStats(); sharedNote(); applyQuranOut(); paintSky(); if (!started && typeof buildPicks === "function") { greet(); buildPicks(); }
+    paintDockMix(); paint(); paintStats(); sharedNote(); applyQuranOut(); paintSky(); paintOp(); if (!started && typeof buildPicks === "function") { greet(); buildPicks(); }
     $("#playBtn").setAttribute("aria-label", t(playing ? "pauseSounds" : "play"));
   }
   function setLang() { LANG = LANG === "en" ? "bn" : "en"; try { localStorage.setItem("fw:lang", LANG); } catch {} relabel(); }

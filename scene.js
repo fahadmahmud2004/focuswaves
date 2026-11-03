@@ -377,7 +377,7 @@ const Scene = (() => {
   }
   function drawClock(horizon, P, night, overcast) {
     if (!clockSpec) { clockRect = null; return; }
-    const { text, x = 0, y = 0, s = 1 } = clockSpec, seaH = H - horizon, narrow = W < 600;
+    const { text, x = 0, y = 0, s = 1, o = 1 } = clockSpec, seaH = H - horizon, narrow = W < 600;
     // phones: hours over minutes, like a bedside clock; wide screens: one line
     const parts = text.split(":"), lines = narrow && parts.length >= 2 ? [parts.slice(0, -1).join(":"), parts[parts.length - 1]] : [text];
     const bottom = horizon + seaH * (narrow ? 0.3 : 0.34) + y, room = bottom - H * (narrow ? 0.17 : 0.2);
@@ -387,7 +387,7 @@ const Scene = (() => {
     const sky = mix(P.top, GREY, overcast * 0.4), hor = mix(P.hor, GREY, overcast * 0.4), lift = 0.25 * night;
     const ivory = [250, 246, 236], sp = clockSprite(lines, fs, [mix(sky, ivory, 0.95), mix(hor, ivory, 0.84 + lift * 0.5), mix(hor, ivory, 0.66 + lift * 0.6)]);
     const dx = W / 2 + x - sp.w / 2, dy = bottom - sp.h + sp.pad + fs * 0.07;
-    g.save();
+    g.save(); g.globalAlpha = Math.max(0, Math.min(1, o));
     g.shadowColor = `rgba(0,0,0,${0.18 + night * 0.12})`; g.shadowBlur = fs * 0.07; g.shadowOffsetY = fs * 0.015;
     g.drawImage(spr.c, dx, dy);
     g.restore();
