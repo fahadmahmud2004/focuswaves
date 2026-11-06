@@ -554,6 +554,132 @@ class Owl {              // a spotted owlet / owl: soft "hoo ... hoo-hoo" from t
   }
 }
 
+/* ---- more voices: waterfall, wind chimes, singing bowl, night train, a purring cat, an old wall clock ---- */
+class Waterfall {        // a steady roar: wide band noise, a deep rumble under it, spray drifting across
+  constructor() {
+    this.pk = [new Pink(), new Pink()]; this.bp = [new SVF(900, 0.45), new SVF(1000, 0.45)]; this.hi = [new HP(3800), new HP(4000)];
+    this.low = [new Brown(), new Brown()]; this.lowLp = [new LP(140), new LP(150)];
+    this.sway = new Drift(1, 0.12, 4); this.pan = new Drift(0, 0.4, 6); this.fc = new Drift(950, 220, 8);
+    this.spray = new Bursts(24); this.sp = new Poisson(40);
+  }
+  render(n, L, R, WL, WR) {
+    const a = clamp(this.sway.next(), 0.75, 1.25), p = clamp(this.pan.next(), -0.6, 0.6), f = clamp(this.fc.next(), 600, 1500);
+    this.bp[0].set(f * (1 - p * 0.15), 0.45); this.bp[1].set(f * (1 + p * 0.15), 0.45);
+    for (let i = 0; i < n; i++) {
+      if (this.sp.tick()) this.spray.add(rand(200, 900), rand(0.02, 0.06), rnd() * 0.9, 0.997);
+      this.spray.run(tmp);
+      const nl = this.pk[0].run(), nr = this.pk[1].run();
+      const l = this.bp[0].run(nl) * 1.1 * a + this.hi[0].run(nl) * 0.25 + this.lowLp[0].run(this.low[0].run()) * 0.55 + tmp[0];
+      const r = this.bp[1].run(nr) * 1.1 * a + this.hi[1].run(nr) * 0.25 + this.lowLp[1].run(this.low[1].run()) * 0.55 + tmp[1];
+      L[i] += l; R[i] += r; WL[i] += (l + r) * 0.12; WR[i] += (l + r) * 0.12;
+    }
+  }
+}
+class Chimes {           // bamboo-free metal tubes tuned to the shared pentatonic key, played by the breeze
+  constructor(p) {
+    this.h = p.harmony; this.pool = new Pool(30); this.gust = new Drift(0.5, 0.35, 5); this.pois = new Poisson(0.6);
+    this.tubes = [0, 2, 4, 7, 9].map((d, i) => ({ m: 0, d, pan: -0.6 + i * 0.3 })); this.lp = [new LP(7000), new LP(7000)];
+  }
+  render(n, L, R, WL, WR) {
+    const g = clamp(this.gust.next(), 0, 1.1); this.pois.rate = 0.15 + g * g * 3.2;
+    for (let i = 0; i < n; i++) {
+      if (this.pois.tick()) {
+        const tb = pick(this.tubes), f = mtof(this.h.key + 24 + tb.d), v = rand(0.015, 0.04) * (0.5 + g * 0.6), pan = tb.pan + rnd() * 0.08;
+        // a hollow tube rings at roughly 1 : 2.76 : 5.40 : 8.93 (free-free bar modes)
+        this.pool.strike(f, rand(2.8, 4.2), v, pan); this.pool.strike(f * 2.756, rand(1.4, 2), v * 0.55, pan);
+        this.pool.strike(f * 5.404, rand(0.5, 0.8), v * 0.3, pan); this.pool.strike(f * 8.933, 0.25, v * 0.15, pan);
+      }
+      this.pool.run(tmp); const l = this.lp[0].run(tmp[0]), r = this.lp[1].run(tmp[1]);
+      L[i] += l; R[i] += r; WL[i] += l * 0.8; WR[i] += r * 0.8;
+    }
+  }
+}
+class Bowl {             // a Tibetan singing bowl struck now and then: slow beating partials, a very long tail
+  constructor(p) { this.h = p.harmony; this.pool = new Pool(16); this.wait = rand(0.3, 1.5) * SR; this.lp = [new LP(5000), new LP(5000)]; this.k = 0; }
+  render(n, L, R, WL, WR) {
+    this.wait -= n;
+    if (this.wait <= 0) {
+      const f = mtof(this.h.key - 12 + pick([0, 0, 7, 12])), v = rand(0.05, 0.08), pan = rnd() * 0.3;
+      // each mode is a pair a few cents apart: that slow "wah-wah" beating is the bowl's voice
+      [[1, 14, 1], [2.71, 8, 0.45], [5.15, 4, 0.2], [8.5, 2, 0.08]].forEach(([r, d, a]) => {
+        this.pool.strike(f * r, d * rand(0.85, 1.1), v * a, pan - 0.15); this.pool.strike(f * r * (1.0025 + urand() * 0.002), d, v * a * 0.9, pan + 0.15);
+      });
+      this.wait = rand(14, 28) * SR;
+    }
+    for (let i = 0; i < n; i++) { this.pool.run(tmp); const l = this.lp[0].run(tmp[0]), r = this.lp[1].run(tmp[1]); L[i] += l; R[i] += r; WL[i] += l * 0.6; WR[i] += r * 0.6; }
+  }
+}
+class Train {            // inside a night train: a deep rolling rumble, the wheels clicking over rail joints, a far horn
+  constructor() {
+    this.r = [new Brown(), new Brown()]; this.rLp = [new LP(110), new LP(120)]; this.mid = new SVF(320, 0.8); this.pk = new Pink();
+    this.speed = new Drift(1, 0.06, 20); this.sway = 0; this.t = rand(0, 1) * SR; this.clk = new Bursts(12); this.thump = new Pool(8);
+    this.horn = 0; this.hornT = rand(50, 120) * SR; this.hph = [0, 0]; this.hlp = new LP(700); this.squeal = new SVF(3200, 18); this.sq = 0;
+  }
+  render(n, L, R, WL, WR) {
+    const sp = clamp(this.speed.next(), 0.85, 1.15), car = 1.55 / sp;      // one coach length every ~1.5 s
+    this.hornT -= n; if (this.hornT <= 0 && !this.horn) { this.horn = 1; this.hornLen = rand(1.6, 2.6) * SR; this.hornAt = 0; this.hornT = rand(70, 160) * SR; }
+    for (let i = 0; i < n; i++) {
+      this.t++;
+      const tc = this.t / SR;
+      if (tc >= car) this.t = 0;
+      // two bogies cross each joint: "da-dum ... da-dum"
+      for (const at of [0, 0.11, 0.62, 0.73]) if (this.t === ((at / sp) * SR | 0)) {
+        const v = at < 0.5 ? rand(0.5, 0.7) : rand(0.35, 0.5);
+        this.clk.add(rand(120, 260), v * 0.35, rand(-0.25, 0.25), 0.985); this.thump.strike(rand(70, 95), 0.06, v * 0.09, 0);
+      }
+      this.sway += 0.37 / SR;
+      const sw = 1 + 0.12 * fsin(this.sway) + 0.05 * fsin(this.sway * 2.7);
+      this.clk.run(tmp); const cl = this.mid.run(tmp[0] + tmp[1]) * 0.9;
+      this.thump.run(tmp); const th = tmp[0] + tmp[1];
+      const rl = this.rLp[0].run(this.r[0].run()) * 0.9 * sw, rr = this.rLp[1].run(this.r[1].run()) * 0.9 * sw;
+      const hiss = this.pk.run() * 0.05;
+      let hn = 0;
+      if (this.horn) {
+        const x = this.hornAt++ / this.hornLen, e = x < 0.1 ? x / 0.1 : x > 0.75 ? Math.max(0, (1 - x) / 0.25) : 1;
+        this.hph[0] += 311 / SR; this.hph[1] += 370 / SR;
+        hn = this.hlp.run((ftab(PADT, this.hph[0]) + ftab(PADT, this.hph[1])) * e * 0.035);
+        if (x >= 1) this.horn = 0;
+      }
+      L[i] += rl + cl * 0.8 + th + hiss + hn; R[i] += rr + cl * 0.7 + th + hiss + hn * 0.8;
+      WL[i] += cl * 0.15 + hn * 1.4; WR[i] += cl * 0.15 + hn * 1.4;
+    }
+  }
+}
+class Purr {             // a cat asleep on your lap: ~25 Hz pulses, in on the breath in and out on the breath out
+  constructor() { this.src = new Brown(); this.f = new SVF(240, 1.1); this.f2 = new SVF(620, 1.6); this.ph = 0; this.br = 0; this.brLen = rand(2.4, 3.2); this.amp = new Drift(1, 0.15, 6); this.rest = 0; }
+  render(n, L, R) {
+    const A = clamp(this.amp.next(), 0.7, 1.25);
+    for (let i = 0; i < n; i++) {
+      if (this.rest > 0) { this.rest--; continue; }
+      this.br += 1 / (this.brLen * SR);
+      if (this.br >= 1) { this.br = 0; this.brLen = rand(2.3, 3.3); if (urand() < 0.04) this.rest = rand(1.5, 4) * SR | 0; }
+      const exhale = this.br > 0.42, x = exhale ? (this.br - 0.42) / 0.58 : this.br / 0.42;
+      const env = Math.sin(Math.PI * x) ** 0.7 * (exhale ? 1 : 0.7);
+      this.ph += (exhale ? 25 : 22.5) / SR; if (this.ph > 1) this.ph -= 1;
+      const pulse = Math.max(0, fsin(this.ph)) ** 3;
+      const s = this.src.run(), y = (this.f.run(s) * 1.2 + this.f2.run(s) * 0.25) * pulse * env * A;
+      L[i] += y; R[i] += y;
+    }
+  }
+}
+class Clock {            // an old wall clock: tick... tock, a wooden case, never quite metronomic
+  constructor() { this.pool = new Pool(8); this.clk = new Bursts(4); this.body = new SVF(1100, 3); this.t = 0; this.next = SR; this.tock = false; this.hp = new HP(400); }
+  render(n, L, R, WL, WR) {
+    for (let i = 0; i < n; i++) {
+      if (++this.t >= this.next) {
+        this.t = 0; this.next = SR * (1 + rnd() * 0.004); this.tock = !this.tock;
+        const f = this.tock ? rand(2350, 2450) : rand(2900, 3000), v = this.tock ? 0.05 : 0.06;
+        this.pool.strike(f, 0.012, v, 0.05); this.pool.strike(f * 1.48, 0.006, v * 0.5, 0.05); this.pool.strike(this.tock ? 820 : 960, 0.03, v * 0.5, 0);
+        this.clk.add(rand(40, 70), 0.25, 0.05, 0.9);
+      }
+      this.pool.run(tmp); const p = tmp[0] + tmp[1];
+      this.clk.run(tmp); const c = this.body.run(this.hp.run(tmp[0] + tmp[1])) * 0.5;
+      const y = p * 0.5 + c;
+      L[i] += y; R[i] += y * 0.94; WL[i] += y * 0.2; WR[i] += y * 0.2;
+    }
+  }
+}
+
 /* ---- binaural beat: a slightly different tone in each ear (headphones). Follows the focus pulse rate. ---- */
 class Binaural {
   constructor(p) { this.p = p; this.pl = 0; this.pr = 0; this.bed = new Pink(); this.bedLp = new LP(900); this.beat = 14; }
@@ -871,11 +997,12 @@ const MAKERS = {
   binaural: p => new Binaural(p),
   lofi: p => new Lofi(p), piano: p => new Piano(p), pad: p => new Pad(p),
   guitar: p => new Guitar(p), kalimba: p => new Kalimba(p), flute: p => new Flute(p), tanpura: p => new Tanpura(p), arp: p => new Arp(p),
+  waterfall: () => new Waterfall(), chimes: p => new Chimes(p), bowl: p => new Bowl(p), train: () => new Train(), purr: () => new Purr(), clock: () => new Clock(),
   white: () => new Noise("white"), pink: () => new Noise("pink"), brown: () => new Noise("brown"),
 };
 
 // output trims so every sound sits at a similar loudness at the same slider position
-const TRIM = { binaural: 1, gulls: 5, leaves: 5.5, cicadas: 0.6, owl: 3, lofi: 0.7, piano: 1.9, pad: 2.4, guitar: 2.7, kalimba: 2.4, flute: 1.6, tanpura: 1.8, arp: 2.4, birds: 2.8, frogs: 2.4, crickets: 2.2, wind: 1.25, waves: 0.85, tinroof: 2.4, thunder: 3.3, stream: 1.35 };
+const TRIM = { chimes: 3.2, bowl: 2, train: 0.85, purr: 1.5, clock: 3, binaural: 1, gulls: 5, leaves: 5.5, cicadas: 0.6, owl: 3, lofi: 0.7, piano: 1.9, pad: 2.4, guitar: 2.7, kalimba: 2.4, flute: 1.6, tanpura: 1.8, arp: 2.4, birds: 2.8, frogs: 2.4, crickets: 2.2, wind: 1.25, waves: 0.85, tinroof: 2.4, thunder: 3.3, stream: 1.35 };
 
 class NatureProcessor extends AudioWorkletProcessor {
   constructor() {

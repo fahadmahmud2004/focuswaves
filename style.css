@@ -67,7 +67,9 @@ svg { flex: none; }
 .begin:hover svg { transform: translateX(3px); }
 .intro-sub { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: 12.5px; margin: 20px 0 0; animation: fadeUp 1s var(--ease) both 1.5s; }
 .intro-sub svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; }
-.intro-shared { color: var(--sea); font-size: 13.5px; margin: 12px 0 0; }
+.intro-shared { color: var(--sea); font-size: 13.5px; margin: 12px 0 0; max-width: 40ch; }
+.intro-warn { margin: 16px 0 0; max-width: 40ch; border: 0; border-radius: 14px; padding: 10px 14px; background: rgba(244,197,138,.14); color: var(--warn); font-size: 13px; line-height: 1.4; }
+.intro-warn:hover { background: rgba(244,197,138,.22); }
 .intro-brand { position: absolute; top: max(20px, env(safe-area-inset-top)); left: 24px; display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none;
   font-family: var(--serif); font-size: 21px; animation: fadeUp 1s var(--ease) both .1s; }
 .intro-brand img { width: 30px; height: 30px; }
@@ -100,6 +102,14 @@ body.pre .top, body.pre .focus, body.pre .dock { opacity: 0; pointer-events: non
 .brand-text b i { font-style: italic; }
 .brand-text small { font-size: 10.5px; color: var(--ink-3); margin-top: 4px; }
 .top-right { display: flex; align-items: center; gap: 8px; }
+.chip-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 38px; }
+.chip-btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.share-btn.hi { position: relative; overflow: hidden; background: linear-gradient(135deg, rgba(143,211,200,.42), rgba(47,143,154,.3)); box-shadow: inset 0 0 0 1px rgba(143,211,200,.35), 0 6px 22px rgba(47,143,154,.25); }
+.share-btn.hi::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.28) 50%, transparent 65%); transform: translateX(-120%); animation: shine 5.5s ease-in-out infinite 2s; }
+@keyframes shine { 0%, 70% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
+.share-btn.hi:hover { background: linear-gradient(135deg, rgba(143,211,200,.55), rgba(47,143,154,.4)); }
+.donate-btn svg { color: #ff9b9b; fill: rgba(255,155,155,.25); }
+.donate-btn:hover svg { fill: rgba(255,155,155,.6); }
 .stats { color: var(--ink-2); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; margin-right: 6px; }
 .stats b { color: var(--ink); font-weight: 600; }
 .chip-btn { border: 0; background: var(--surface-lo); border-radius: 999px; padding: 8px 13px; font-size: 13px; font-weight: 600; min-width: 44px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); transition: background .2s; }
@@ -334,16 +344,19 @@ body.depth .clock { opacity: 1; }
   backdrop-filter: blur(26px) saturate(170%) brightness(1.08); -webkit-backdrop-filter: blur(26px) saturate(170%) brightness(1.08);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(255,255,255,.08), inset 1px 0 0 rgba(255,255,255,.12), 0 30px 80px rgba(0,0,0,.28); }
 
-/* Depth: the clock is painted by the scene (behind the near waves); the DOM element is an invisible handle */
-body.depth .focus-in { translate: none; scale: none; height: 100%; justify-content: space-between; padding-top: 1vh; }
+/* Depth: the clock is painted by the scene (behind the near waves); the DOM element is an invisible handle.
+   The label sits just above the numerals and the progress + button just below, like a phone lock screen. */
+body.depth .focus-in { translate: none; scale: none; }
 body.depth .clock { position: fixed; z-index: 1; color: transparent; text-shadow: none; font-size: 10px; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0; margin: 0; }
-body.depth .intent { order: -3; } body.depth .mode { order: -2; margin-top: 4px; } body.depth .date-line { order: -1; margin-top: 2px; }
-body.depth .date-line { font-size: clamp(17px, 2.2vw, 22px); }
-body.depth .date-line span:first-child { font-weight: 600; }
-body.depth .focus-in::after { content: ""; flex: 1; order: 0; }
-body.depth .clock + .date-line { order: -1; }
-body.depth .progress, body.depth .dots, body.depth .actions, body.depth .intent, body.depth .mode, body.depth .date-line { position: relative; z-index: 2; }
-body.depth .progress { order: 1; } body.depth .dots { order: 2; } body.depth .actions { order: 3; margin-top: 8px; }
+body.depth .over, body.depth .under { position: fixed; left: 0; right: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; padding: 0 16px; pointer-events: none; }
+body.depth .over > *, body.depth .under > * { pointer-events: auto; }
+body.depth .over { bottom: calc(100dvh - var(--ct, 30dvh)); }
+body.depth .under { top: var(--cb, 70dvh); }
+body.depth .mode { margin-top: 2px; }
+body.depth .actions { margin-top: 8px; }
+.over, .under { display: contents; }
+.clock, .analog { order: 0; } .date-line { order: 1; } .under > * { order: 2; }
+body.depth .over { gap: 2px; }
 
 /* analog faces */
 body.analog-face .clock { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -387,8 +400,12 @@ body.analog-face .clock { position: absolute; width: 1px; height: 1px; overflow:
 .fprev .an .tk-h { stroke-width: 6; } .fprev .an-dial .tk-h { stroke-width: 8; }
 .fprev .an .an-h { stroke-width: 11; } .fprev .an .an-m { stroke-width: 7; }
 
-.date-line { font-size: clamp(15px, 2vw, 19px); color: var(--ink-2); margin-top: 6px; text-shadow: 0 1px 12px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: 2px; }
-.date-line span:first-child { color: var(--ink); }
+/* the date: a calm serif line, then the Bangla and Hijri dates small and spaced, so it reads like a printed calendar */
+.date-line { color: var(--ink-2); margin: 8px 0 4px; display: flex; flex-direction: column; align-items: center; gap: 5px; text-shadow: 0 1px 14px rgba(0,0,0,.28); }
+.date-line span:first-child { font-family: var(--serif); font-size: clamp(22px, 2.5vw, 28px); font-weight: 400; letter-spacing: .005em; line-height: 1.1; color: var(--ink); }
+.date-line span:last-child { font-size: 11.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); }
+html[lang="bn"] .date-line span:first-child { font-family: "Hind Siliguri", sans-serif; font-weight: 500; font-size: clamp(18px, 2vw, 22px); }
+html[lang="bn"] .date-line span:last-child { letter-spacing: .02em; text-transform: none; font-size: 14px; font-weight: 400; }
 .focus.clock-mode .progress, .focus.clock-mode .dots, .focus.clock-mode .actions, .focus.clock-mode .mode, .focus.sw-mode .dots { display: none; }
 body.analog-face .progress { display: none; }
 
@@ -469,6 +486,98 @@ body.zen, body.ui-off { cursor: none; }
   .tabs { gap: 14px; } .tabs button { font-size: 13.5px; }
   .clock { font-size: clamp(96px, 26vw, 150px); }
 }
+@media (max-width: 720px) { .chip-btn.share-btn span, .chip-btn.donate-btn span { display: none; } .chip-btn.share-btn, .chip-btn.donate-btn { width: 38px; min-width: 38px; padding: 0; } .top-right { gap: 6px; } }
+@media (max-width: 520px) { #fsBtn { display: none; } }
 @media (max-width: 370px) { .dk span { display: none; } .dk { min-width: 40px; } .faces { gap: 10px 6px; } }
 @media (max-height: 720px) { .clock { font-size: clamp(72px, 16vh, 140px); } .mode { margin-top: 6px; } .analog { width: clamp(180px, 40vh, 300px); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* ===== cards: donate, share, install, no sound ===== */
+.modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(4,8,12,.5);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: fadeIn .25s ease both; overscroll-behavior: contain; }
+@keyframes fadeIn { from { opacity: 0; } }
+.card { position: relative; width: min(480px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; background: rgba(16,21,26,.94); border-radius: 28px; padding: 30px 26px 24px;
+  box-shadow: 0 40px 120px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06); animation: lift .4s var(--ease); scrollbar-width: thin; text-align: center; }
+.card.narrow { width: min(420px, 100%); }
+.card h2 { font-family: var(--serif); font-weight: 400; font-size: 32px; line-height: 1.05; letter-spacing: -.01em; margin: 6px 0 10px; }
+html[lang="bn"] .card h2 { font-family: "Hind Siliguri", sans-serif; font-weight: 600; font-size: 24px; line-height: 1.3; }
+.card .lead { font-size: 15.5px; color: var(--ink); margin: 0 auto 12px; max-width: 36ch; line-height: 1.45; }
+.card .body { font-size: 14px; color: var(--ink-2); margin: 0 0 10px; text-align: left; line-height: 1.6; }
+.card .body.strong { color: var(--ink); font-weight: 500; }
+.x-btn { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--fill-1); display: grid; place-items: center; color: var(--ink-2); z-index: 2; }
+.x-btn:hover { background: var(--fill-2); color: var(--ink); }
+.x-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.card-hero { width: 64px; height: 64px; margin: 0 auto 6px; border-radius: 20px; display: grid; place-items: center; background: linear-gradient(140deg, rgba(143,211,200,.3), rgba(47,143,154,.15)); }
+.card-hero img { width: 64px; height: 64px; border-radius: 16px; }
+.card-hero svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.donate-hero { background: linear-gradient(140deg, rgba(255,155,155,.32), rgba(244,197,138,.16)); }
+.donate-hero svg { color: #ffb3b3; fill: rgba(255,155,155,.35); animation: beat 1.8s ease-in-out infinite; }
+@keyframes beat { 0%, 60%, 100% { transform: scale(1); } 15% { transform: scale(1.12); } 30% { transform: scale(.98); } 45% { transform: scale(1.06); } }
+.card-hero.warn { background: rgba(244,197,138,.16); color: var(--warn); }
+.pay { background: var(--fill-1); border-radius: 18px; padding: 14px 16px; margin-top: 10px; text-align: left; }
+.pay-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.pay-h b { font-size: 14px; font-weight: 600; }
+.tag { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: rgba(143,211,200,.16); color: var(--sea); }
+.wallets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.wallets span { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px; color: #fff; letter-spacing: .01em; }
+.w-bkash { background: #d12053; } .w-nagad { background: #ec1c24; } .w-rocket { background: #8c3494; } .w-upay { background: #1a4a9c; }
+.copy-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(0,0,0,.22); border-radius: 12px; padding: 8px 8px 8px 14px; }
+.copy-row.in { display: inline-flex; padding: 4px 4px 4px 10px; background: rgba(0,0,0,.18); }
+.copy-row .num { font: 600 19px/1 var(--tight); letter-spacing: .04em; font-variant-numeric: tabular-nums; color: var(--ink); user-select: all; }
+.copy-row.in .num { font-size: 15px; }
+.copy { border: 0; border-radius: 999px; background: var(--ink); color: var(--char); font-size: 12.5px; font-weight: 600; padding: 7px 14px; white-space: nowrap; transition: background .2s; }
+.copy.ok { background: var(--sea); }
+.bank { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 0; font-size: 13.5px; align-items: center; }
+.bank dt { color: var(--ink-3); } .bank dd { margin: 0; color: var(--ink); font-weight: 500; }
+.thanks { font-size: 13.5px; color: var(--ink-2); margin: 16px auto 0; max-width: 38ch; font-style: italic; }
+html[lang="bn"] .thanks { font-style: normal; }
+/* share */
+.share-art { position: relative; height: 150px; border-radius: 20px; margin: 30px 0 14px; overflow: hidden; display: flex; align-items: flex-end; text-align: left; padding: 16px; box-shadow: 0 18px 50px rgba(0,0,0,.35); }
+.share-art::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgba(0,0,0,.45)); }
+.sa-ico { position: absolute; top: 14px; right: 14px; display: flex; gap: 6px; color: rgba(255,255,255,.92); }
+.sa-ico svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+.sa-txt { position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sa-txt small { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.8); }
+html[lang="bn"] .sa-txt small { letter-spacing: 0; font-size: 12px; }
+.sa-txt b { font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1.05; color: #fff; }
+html[lang="bn"] .sa-txt b { font-family: "Hind Siliguri", sans-serif; font-weight: 600; font-size: 24px; }
+.sa-txt span { font-size: 13px; color: rgba(255,255,255,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.share-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px; margin: 14px 0 12px; }
+.share-grid a, .share-grid button { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; background: none; color: var(--ink-2); font-size: 12px; text-decoration: none; padding: 4px 0; }
+.share-grid i { width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; color: #fff; transition: transform .2s var(--ease); }
+.share-grid a:hover i, .share-grid button:hover i { transform: translateY(-2px); }
+.share-grid svg { width: 22px; height: 22px; fill: currentColor; }
+.share-grid .s-more svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.copy-row.link input { flex: 1; min-width: 0; background: none; border: 0; color: var(--ink-2); font-size: 13px; outline: none; }
+.hint.center { text-align: center; margin-top: 10px; }
+/* install + no sound */
+.steps { text-align: left; margin: 8px 0 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
+.steps li { counter-increment: s; display: flex; gap: 12px; align-items: flex-start; font-size: 14px; color: var(--ink-2); line-height: 1.5; background: var(--fill-1); border-radius: 14px; padding: 11px 14px; }
+.steps li::before { content: counter(s); flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--fill-3); color: var(--ink); display: grid; place-items: center; font-size: 12.5px; font-weight: 600; }
+.steps li b { color: var(--ink); font-weight: 600; }
+.steps .ico { display: inline-block; width: 17px; height: 17px; vertical-align: -3px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ns-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 18px; }
+.btn-main, .btn-soft { border: 0; border-radius: 999px; padding: 11px 20px; font-weight: 600; font-size: 14px; text-decoration: none; }
+.btn-main { background: var(--ink); color: var(--char); } .btn-soft { background: var(--fill-2); color: var(--ink); }
+@media (max-width: 520px) { .card { padding: 26px 18px 20px; border-radius: 24px; } .card h2 { font-size: 28px; } .copy-row .num { font-size: 17px; } }
+
+/* ===== power saver: pure black, no animation, a dim clock that drifts a little (no burn-in) ===== */
+.saver-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 0 0 14px; border-radius: 18px; background: var(--fill-1); cursor: pointer; }
+.saver-row:hover { background: var(--fill-2); }
+.sv-ico { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: rgba(143,211,200,.16); color: var(--sea); flex: none; }
+.sv-ico svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.sv-txt { flex: 1; display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.sv-txt b { font-size: 14px; font-weight: 600; } .sv-txt small { font-size: 12.5px; color: var(--ink-3); }
+.saver-row .switch { margin: 0 !important; }
+body.saver { background: #000; }
+body.saver #scene, body.saver .vignette { visibility: hidden; }
+body.saver .analog { display: none !important; }
+body.saver .focus-in { translate: var(--sx, 0) var(--sy, 0); scale: var(--fs); }
+body.saver .over, body.saver .under { display: contents !important; position: static; }
+body.saver .clock { position: static !important; width: auto !important; height: auto !important; clip-path: none; overflow: visible;
+  color: rgba(246,242,231,.6) !important; font-family: var(--tight) !important; font-weight: 200; font-size: clamp(88px, 18vw, 190px) !important; letter-spacing: -.045em; line-height: 1;
+  background: none !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; padding: 0 !important; text-shadow: none; opacity: var(--fo, 1) !important; }
+body.saver .intent, body.saver .mode, body.saver .date-line, body.saver .progress, body.saver .dots { opacity: .55; text-shadow: none; }
+body.saver .primary { background: rgba(246,242,231,.08); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+body.saver .dock, body.saver .round, body.saver .chip-btn { backdrop-filter: none; -webkit-backdrop-filter: none; }
+body.saver .dock { background: rgba(20,22,24,.9); }

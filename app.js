@@ -50,7 +50,12 @@
   ["pointerdown", "keydown", "touchend"].forEach(ev => addEventListener(ev, revive, { capture: true, passive: true }));
   document.addEventListener("visibilitychange", () => { if (!document.hidden) revive(); });
   let checkT;
-  const checkSound = () => { clearTimeout(checkT); checkT = setTimeout(() => { if (started && playing && Audio_.state !== "running" && Audio_.state !== "none") { Audio_.resume(); toast(t("tapForSound")); } }, 1800); };
+  const checkSound = () => { clearTimeout(checkT); checkT = setTimeout(() => {
+    if (!(started && playing) || Audio_.state === "running") return;
+    if (Audio_.state === "none") return showNoSound(inApp ? "inApp" : "engine");
+    Audio_.resume(); toast(t("tapForSound"));
+    checkT = setTimeout(() => { if (started && playing && Audio_.state !== "running") showNoSound(inApp ? "inApp" : "blocked"); }, 4000);
+  }, 1800); };
 
   let suspendT;
   function setPlaying(on) {
@@ -74,7 +79,7 @@
     if (name) unZen(); else armZen();
   }
   $$("[data-panel]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.panel)));
-  document.addEventListener("pointerdown", e => { if (openName && !e.target.closest(".panel, .dock, .toast")) openPanel(null); });
+  document.addEventListener("pointerdown", e => { if (openName && !e.target.closest(".panel, .dock, .toast, .modal")) openPanel(null); });
   /* ---- the clock block can be resized and dragged anywhere; a plain click opens the Clock panel ---- */
   const focusBox = $("#focus"), L0 = Object.assign({ x: 0, y: 0, s: 1 }, store.get("layout", {}));
   let onLayout = () => {};                            // set once the clock face exists (Depth repositions the painted clock)
@@ -211,7 +216,7 @@
     $("#mixArt").style.background = artCss(m ? m.art : ["#56677a", "#1f2a35"]);
   }
   function renderMixes() {
-    const cats = [["nature", "nature"], ["focus", "focusCat"], ["music", "music"]];
+    const cats = [["nature", "nature"], ["cozy", "cozy"], ["focus", "focusCat"], ["music", "music"]];
     if (userMixes().length) cats.push(["yours", "yours"]);
     const f = $("#mixFilters"); f.innerHTML = "";
     cats.forEach(([id, key]) => { const b = document.createElement("button"); b.textContent = t(key); b.setAttribute("aria-pressed", mixFilter === id); b.onclick = () => { mixFilter = id; renderMixes(); }; f.appendChild(b); });
@@ -245,16 +250,100 @@
   const encodeMix = m => Object.entries(m).map(([k, v]) => `${k}-${Math.round(v * 100)}`).concat(pulse.hz ? [`hz${pulse.hz}-${Math.round(pulse.depth * 100)}`] : []).join(".");
   function decodeMix(h) {
     const m = /mix=([\w.-]+)/.exec(h); if (!m) return null;
+    let nm = null; try { const x = /[#?&]n=([^&]+)/.exec(h); if (x) nm = decodeURIComponent(x[1]).slice(0, 40); } catch {}
     const out = {}; let pl = null;
     m[1].split(".").forEach(p => { const [k, v] = p.split("-"); if (/^hz\d+$/.test(k)) pl = { hz: Math.min(40, +k.slice(2)), depth: Math.min(70, +v || 45) / 100 }; else if (state[k] && +v > 0) out[k] = Math.min(100, +v) / 100; });
-    if (!Object.keys(out).length) return null; Object.defineProperty(out, "pulse", { value: pl, enumerable: false }); return out;
+    if (!Object.keys(out).length) return null; Object.defineProperty(out, "pulse", { value: pl, enumerable: false }); Object.defineProperty(out, "name", { value: nm, enumerable: false }); return out;
   }
-  $("#shareBtn").addEventListener("click", async () => {
+  const shareLink = () => { const mix = currentMix(); if (!Object.keys(mix).length) return location.origin + location.pathname;
+    const nm = mixLabel(); return `${location.origin}${location.pathname}#mix=${encodeMix(mix)}${nm ? "&n=" + encodeURIComponent(nm.slice(0, 40)) : ""}`; };
+  async function copyText(txt) {
+    try { await navigator.clipboard.writeText(txt); return true; } catch {}
+    const ta = document.createElement("textarea"); ta.value = txt; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch {} ta.remove(); return ok;
+  }
+  const flashCopied = b => { const was = b.textContent; b.textContent = t("copiedShort"); b.classList.add("ok"); setTimeout(() => { b.textContent = t("copy"); b.classList.remove("ok"); }, 1600); };
+  $$("[data-copy]").forEach(b => b.addEventListener("click", async () => { await copyText(b.dataset.copy); flashCopied(b); }));
+
+  /* ---- cards (donate, share, install, no sound): one at a time, close on the backdrop, the X or Escape ---- */
+  const anyModal = () => [...$$(".modal")].some(m => !m.hidden);
+  function openModal(id) { closeModals(); openPanel(null); if (uiOff) showUI(); $("#m-" + id).hidden = false; unZen(); }
+  function closeModals() { $$(".modal").forEach(m => (m.hidden = true)); }
+  $$(".modal").forEach(m => m.addEventListener("click", e => { if (e.target === m || e.target.closest("[data-close]")) m.hidden = true; }));
+  $("#donateBtn").addEventListener("click", () => openModal("donate"));
+
+  /* ---- share: a card with the mix itself, the usual apps, and the link ---- */
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const SHARE_ICONS = {
+    wa: '<path d="M12 2.5a9.4 9.4 0 0 0-8.1 14.2L2.6 21.4l4.8-1.3A9.4 9.4 0 1 0 12 2.5zm5.3 13.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.3-.3.6-.3.8-.3h.6c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.5.3.1.1.1.6-.1 1.2z"/>',
+    ms: '<path d="M12 2.5C6.6 2.5 2.5 6.4 2.5 11.6c0 2.7 1.1 5.1 3 6.7v3.2l3-1.6c1.1.3 2.2.5 3.5.5 5.4 0 9.5-3.9 9.5-9.1S17.4 2.5 12 2.5zm1 12.2-2.4-2.6-4.7 2.6 5.2-5.5 2.5 2.6 4.6-2.6-5.2 5.5z"/>',
+    fb: '<path d="M13.5 21.5v-8h2.7l.4-3.2h-3.1V8.3c0-.9.3-1.5 1.6-1.5h1.6V4a22 22 0 0 0-2.4-.1c-2.4 0-4 1.4-4 4.1v2.3H7.6v3.2h2.7v8z"/>',
+    tg: '<path d="M21 4.2 2.9 11.2c-1.2.5-1.2 1.2-.2 1.5l4.6 1.4 1.8 5.4c.2.6.4.8.9.8.4 0 .6-.2.9-.4l2.2-2.1 4.6 3.4c.8.5 1.4.2 1.6-.8l3-14.1c.3-1.3-.5-1.8-1.3-1.5zM9.4 14l8.3-5.3c.4-.2.7-.1.4.2l-7 6.4-.3 3.1z"/>',
+    x: '<path d="M17.8 3h3.1l-6.8 7.7L22 21h-6.3l-4.9-6.4L5.2 21H2.1l7.3-8.3L1.8 3h6.4l4.4 5.9zm-1.1 16.2h1.7L7.4 4.7H5.5z"/>',
+    more: '<circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/>',
+  };
+  function openShare() {
     const mix = currentMix(); if (!Object.keys(mix).length) return toast(t("turnOn"));
-    const url = `${location.origin}${location.pathname}#mix=${encodeMix(mix)}`;
-    try { await navigator.clipboard.writeText(url); } catch { const ta = document.createElement("textarea"); ta.value = url; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch {} ta.remove(); }
-    toast(t("copied"));
+    const name = mixLabel() || t("yourMix"), sounds = Object.keys(mix).map(k => nameOf(soundById(k))).join(" · ");
+    const m = MIXES.find(x => x.id === activeMix), art = m ? m.art : ["#6b87a3", "#1f2f3e"];
+    $("#shareArt").style.background = `linear-gradient(180deg, ${art[0]} 0%, ${mixHex(art[0], art[1], 0.25)} 55%, ${art[1]} 55%, ${mixHex(art[1], "#000000", 0.45)} 100%)`;
+    $("#shareIcons").innerHTML = Object.keys(mix).slice(0, 5).map(k => `<svg viewBox="0 0 24 24">${ICONS[k]}</svg>`).join("");
+    $("#shareName").textContent = name; $("#shareSub").textContent = sounds;
+    const url = shareLink(), text = t("shText").replace("{name}", name).replace("{sounds}", sounds), U = encodeURIComponent(url), T = encodeURIComponent(text);
+    $("#shareUrl").value = url;
+    const items = [
+      ["wa", "WhatsApp", "#25d366", `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`],
+      isMobile && ["ms", "Messenger", "linear-gradient(135deg,#00b2ff,#a033ff)", `fb-messenger://share/?link=${U}`],
+      ["fb", "Facebook", "#1877f2", `https://www.facebook.com/sharer/sharer.php?u=${U}`],
+      ["tg", "Telegram", "#29a9eb", `https://t.me/share/url?url=${U}&text=${T}`],
+      ["x", "X", "#111", `https://twitter.com/intent/tweet?text=${T}&url=${U}`],
+      navigator.share && ["more", t("shMore"), "rgba(246,242,231,.16)", null],
+    ].filter(Boolean);
+    const grid = $("#shareGrid"); grid.innerHTML = "";
+    items.forEach(([k, label, bg, href]) => {
+      const el = document.createElement(href ? "a" : "button");
+      if (href) { el.href = href; el.target = "_blank"; el.rel = "noopener"; } else { el.className = "s-more"; el.onclick = () => navigator.share({ title: "Focus Waves", text, url }).catch(() => {}); }
+      el.innerHTML = `<i style="background:${bg}"><svg viewBox="0 0 24 24" aria-hidden="true">${SHARE_ICONS[k]}</svg></i><span></span>`; el.querySelector("span").textContent = label;
+      grid.appendChild(el);
+    });
+    openModal("share");
+  }
+  $("#shareBtn").addEventListener("click", openShare); $("#shareTop").addEventListener("click", openShare);
+  $("#shareCopy").addEventListener("click", async e => { await copyText($("#shareUrl").value); flashCopied(e.currentTarget); toast(t("copied")); });
+  $("#shareUrl").addEventListener("focus", e => e.target.select());
+
+  /* ---- install as an app: the browser's own prompt where there is one, clear steps everywhere else ---- */
+  const UA = navigator.userAgent, isIOS = /iPhone|iPad|iPod/.test(UA) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1), isAndroid = /Android/.test(UA);
+  const inApp = /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|Line\/|MicroMessenger|Snapchat|TikTok|musical_ly|BytedanceWebview|LinkedInApp|Pinterest|Twitter/i.test(UA) || (isAndroid && /; wv\)/.test(UA));
+  const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  let installEv = null;
+  const paintInstall = () => ($("#installBtn").hidden = standalone());
+  addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEv = e; paintInstall(); });
+  addEventListener("appinstalled", () => { installEv = null; toast(t("inDone")); paintInstall(); closeModals(); });
+  const fillSteps = (el, list) => { el.innerHTML = ""; (list || []).forEach(h => { const li = document.createElement("li"); li.innerHTML = `<span>${h}</span>`; el.appendChild(li); }); };
+  $("#installBtn").addEventListener("click", async () => {
+    if (installEv) { installEv.prompt(); try { const c = await installEv.userChoice; if (c.outcome === "accepted") toast(t("inDone")); } catch {} installEv = null; return; }
+    const safari = isIOS && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(UA) && !inApp;
+    fillSteps($("#installSteps"), t(isIOS ? (safari ? "inIos" : "inIosOther") : isAndroid ? "inAndroid" : "inDesktop"));
+    openModal("install");
   });
+  paintInstall();
+
+  /* ---- no sound: in-app browsers (Facebook, Messenger, Instagram...) and old browsers can't run the engine.
+     Say so plainly, with a way out, instead of sitting silent. ---- */
+  const engineOK = !!(window.AudioContext || window.webkitAudioContext) && "AudioWorkletNode" in window;
+  function showNoSound(why) {
+    $("#nsBody").textContent = t(why === "inApp" ? "nsInApp" : why === "engine" ? "nsEngine" : "nsBlocked");
+    fillSteps($("#nsSteps"), inApp ? t(isIOS ? "nsStepsIos" : "nsStepsAndroid") : null);
+    const ch = $("#nsChrome"); ch.hidden = !isAndroid;
+    if (isAndroid) { const u = new URL(shareLink()), q = u.hash.slice(1); ch.href = `intent://${u.host}${u.pathname}${q ? "?" + q : ""}#Intent;scheme=https;package=com.android.chrome;end`; }
+    $("#nsRetry").hidden = why !== "blocked";
+    openModal("nosound");
+  }
+  $("#nsCopy").addEventListener("click", async () => { await copyText(shareLink()); toast(t("nsCopied")); });
+  $("#nsRetry").addEventListener("click", () => { Audio_.resume(); setTimeout(() => { if (Audio_.state === "running") closeModals(); }, 500); });
+  const introWarn = () => { const w = $("#introWarn"); w.hidden = !(inApp || !engineOK); w.textContent = t(inApp ? "introWarnInApp" : "nsEngine"); };
+  $("#introWarn").addEventListener("click", () => showNoSound(inApp ? "inApp" : "engine"));
 
   /* ============================ TIMER ============================ */
   const T = Object.assign({ focus: 25, short: 5, long: 15, auto: true }, store.get("timer", {}));
@@ -294,16 +383,25 @@
   intent.addEventListener("keydown", e => { if (e.key === "Enter") { intent.blur(); if (!F.running) focusBtn.click(); } });
   /* Depth face: the scene paints the clock inside the sea; the DOM clock becomes an invisible handle on top of it */
   function depthClock() {
-    const on = face === "depth"; document.body.classList.toggle("depth", on);
+    const on = face === "depth" && !(saver && started); document.body.classList.toggle("depth", on);
     Scene.setClock(on && started ? { text: clock.textContent, x: L0.x, y: L0.y, s: L0.s, o: clockOp } : null);
-    placeHandle();
+    placeHandle(); if (!on) placeAround(null);
   }
   function placeHandle() {
-    const r = face === "depth" && Scene.clockRect();
+    const r = face === "depth" && !document.body.classList.contains("saver") && Scene.clockRect();
     if (r) Object.assign(clock.style, { left: r.x + "px", top: r.y + "px", width: r.w + "px", height: r.h + "px" });
     else ["left", "top", "width", "height"].forEach(k => (clock.style[k] = ""));
   }
-  setInterval(placeHandle, 300); addEventListener("resize", () => setTimeout(placeHandle, 50)); onLayout = depthClock;
+  const overEl = $(".over"), underEl = $(".under");
+  function placeAround(r) {
+    const bs = document.body.style;
+    if (!r || !document.body.classList.contains("depth")) { bs.removeProperty("--ct"); bs.removeProperty("--cb"); return; }
+    const top = $(".top").getBoundingClientRect().bottom + 6, dockTop = $("#dock").getBoundingClientRect().top - 10;
+    const ct = Math.max(top + overEl.offsetHeight, r.y - 12), cb = Math.max(top, Math.min(r.y + r.h + 16, dockTop - underEl.offsetHeight));
+    bs.setProperty("--ct", ct + "px"); bs.setProperty("--cb", cb + "px");
+  }
+  Scene.onClockRect(r => { placeHandle(); placeAround(r); });
+  setInterval(placeHandle, 300); addEventListener("resize", () => setTimeout(() => { placeHandle(); placeAround(Scene.clockRect()); }, 50)); onLayout = depthClock;
   function paint() { paintCore(); depthClock(); paintAnalog(); }
   function paintCore() {
     const digits = s => (face === "bangla" ? bnDigits(s) : s);
@@ -460,7 +558,7 @@
   }
   let anRaf = 0;
   function startAnalog() { if (!anRaf) anRaf = requestAnimationFrame(analogLoop); }
-  function analogLoop() { anRaf = 0; if (!isAnalog()) return; paintAnalog(); if (!document.hidden) startAnalog(); else setTimeout(startAnalog, 1000); }
+  function analogLoop() { anRaf = 0; if (!isAnalog() || document.body.classList.contains("saver")) return; paintAnalog(); if (!document.hidden) startAnalog(); else setTimeout(startAnalog, 1000); }
   function paintAnalog() {
     if (!isAnalog()) return;
     const an = $("#analog"), svg = an.querySelector("svg"); if (!svg) return;
@@ -505,6 +603,21 @@
   skyAuto.addEventListener("change", () => { sky = skyAuto.checked ? "auto" : +skyIn.value; store.set("sky", sky); paintSky(); });
   setInterval(() => sky === "auto" && paintSky(), 30000);
   paintSky();
+
+  /* ---- power saver: the scene stops drawing (no animation work at all), the screen goes black, a dim clock
+     drifts a few pixels each minute so an OLED screen never burns in. Sound keeps playing. ---- */
+  let saver = store.get("saver", false), driftT = null;
+  function applySaver() {
+    const on = saver && started;
+    document.body.classList.toggle("saver", on); $("#saverSw").checked = saver;
+    Scene.setPaused(on);
+    clearInterval(driftT);
+    const drift = () => { focusBox.style.setProperty("--sx", (Math.random() * 40 - 20 + L0.x) + "px"); focusBox.style.setProperty("--sy", (Math.random() * 30 - 15 + L0.y) + "px"); };
+    if (on) { drift(); driftT = setInterval(drift, 60000); }
+    depthClock(); if (!on && isAnalog()) startAnalog();
+    $("#meta-theme") && ($("#meta-theme").content = on ? "#000000" : "#0b1520");
+  }
+  $("#saverSw").addEventListener("change", e => { saver = e.target.checked; store.set("saver", saver); applySaver(); if (saver) { openPanel(null); toast(t("saverOn")); } });
 
   /* ---- zen (automatic, while focusing and idle) and hide (manual) ---- */
   let zenT, hintT;
@@ -617,13 +730,15 @@
   if (!document.documentElement.requestFullscreen) $("#fsBtn").hidden = true;
 
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape") { if (uiOff) return showUI(); if (openName) return openPanel(null); }
+    if (e.key === "Escape") { if (anyModal()) return closeModals(); if (uiOff) return showUI(); if (openName) return openPanel(null); }
+    if (anyModal()) return;
     if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
     if (!started && (e.key === "Enter" || e.code === "Space") && e.target.tagName !== "BUTTON") { e.preventDefault(); return enter(); }
     if (uiOff) { showUI(); if (e.code !== "Space") return; }
     if (e.code === "Space" && e.target.tagName !== "BUTTON") { e.preventDefault(); setPlaying(!playing); }
     else if (e.key === "f") toggleFs();
     else if (e.key === "h") hideUI();
+    else if (e.key === "p") { saver = !saver; store.set("saver", saver); applySaver(); }
     else if (e.key === "m") openPanel("mixes");
     else if (e.key === "s") openPanel("sounds");
     else if (e.key === "t" || e.key === "c") openPanel("clock");
@@ -631,7 +746,7 @@
 
   function relabel() {
     applyI18n(); buildSounds(); buildFaces(); OPTS.forEach(o => buildOpts(...o)); if (openName === "mixes") renderMixes();
-    paintDockMix(); paint(); paintStats(); sharedNote(); applyQuranOut(); paintSky(); paintOp(); if (!started && typeof buildPicks === "function") { greet(); buildPicks(); }
+    paintDockMix(); paint(); paintStats(); sharedNote(); applyQuranOut(); paintSky(); paintOp(); introWarn(); if (!started && typeof buildPicks === "function") { greet(); buildPicks(); }
     $("#playBtn").setAttribute("aria-label", t(playing ? "pauseSounds" : "play"));
   }
   function setLang() { LANG = LANG === "en" ? "bn" : "en"; try { localStorage.setItem("fw:lang", LANG); } catch {} relabel(); }
@@ -659,15 +774,22 @@
   }
 
   /* ============================ ENTER ============================ */
-  const shared = decodeMix(location.hash);
-  function sharedNote() { const n = $("#introShared"); if (!shared) return; n.hidden = false; n.textContent = t("sharedMix") + Object.keys(shared).map(k => nameOf(soundById(k))).join(", "); }
+  const shared = decodeMix(location.hash) || decodeMix(location.search);
+  // a shared preset comes back as that preset; a friend's own mix keeps the name they gave it
+  const sharedId = () => { if (!shared || !shared.name) return null; const m = MIXES.find(x => x.name === shared.name || x.bn === shared.name); return m ? m.id : "u:" + shared.name; };
+  function sharedNote() { const n = $("#introShared"); if (!shared) return; n.hidden = false;
+    const list = Object.keys(shared).map(k => nameOf(soundById(k))).join(", ");
+    const m = MIXES.find(x => x.id === sharedId());
+    n.textContent = shared.name ? t("sharedNamed").replace("{name}", m ? nameOf(m) : shared.name) + list : t("sharedMix") + list; }
   async function enter() {
     if (started) return; started = true;
-    try { await Audio_.init(); Audio_.setSpace(space); } catch (err) { console.error(err); toast(t("noAudio")); }
+    let audioOK = true;
+    try { await Audio_.init(); Audio_.setSpace(space); } catch (err) { console.error(err); audioOK = false; }
     Audio_.onEvent(Scene.event);
     $("#intro").classList.add("gone"); document.body.classList.remove("pre"); paint();
-    if (shared) { applyMix(shared, null, false, shared.pulse); history.replaceState(null, "", location.pathname); toast(t("sharedLoaded")); }
-    setPlaying(true);
+    if (shared) { applyMix(shared, sharedId(), false, shared.pulse); history.replaceState(null, "", location.pathname); toast(t("sharedLoaded")); }
+    setPlaying(true); applySaver();
+    if (!audioOK) showNoSound(inApp ? "inApp" : "engine");
   }
   $("#beginBtn").addEventListener("click", enter);
 
@@ -700,7 +822,7 @@
   /* ============================ INIT ============================ */
   const saved = store.get("mix", null);
   relabel();
-  if (shared) applyMix(shared, null, false, shared.pulse);
+  if (shared) applyMix(shared, sharedId(), false, shared.pulse);
   else if (saved && Object.keys(saved).length) applyMix(saved, store.get("activeMix", null), false);
   else applyMix(MIXES[0].mix, MIXES[0].id, false);
   if (cur && !cur.getAttribute("src")) { attempts = quranSources(RECITERS[+recSel.value], +surahSel.value).flatMap(url => [{ url, el: qA }, { url, el: qB }]); attemptIdx = 0; }

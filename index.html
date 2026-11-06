@@ -8,7 +8,7 @@
 <meta property="og:title" content="Focus Waves · by Freaking Waves">
 <meta property="og:description" content="Sit by the sea. Get your work done. Live nature sounds, lofi, focus sessions and Quran recitation. Free.">
 <meta property="og:image" content="https://focus.freakingwaves.com/brand/og.png">
-<meta name="theme-color" content="#0b1520">
+<meta name="theme-color" content="#0b1520" id="meta-theme">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="brand/fw-favicon-64.png" type="image/png">
 <link rel="apple-touch-icon" href="brand/fw-apple-touch-icon.png">
@@ -35,6 +35,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
     <p class="intro-sub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg><span data-t="headphones">Best with headphones</span></p>
     <p class="intro-shared" id="introShared" hidden></p>
+    <button class="intro-warn" id="introWarn" hidden></button>
   </div>
   <a class="intro-brand" href="https://freakingwaves.com" aria-label="Freaking Waves"><img src="brand/logo.png" alt="" width="30" height="30"><span>Focus Waves</span></a>
   <button class="intro-lang" id="introLang" data-t="langBtn">বাং</button>
@@ -48,22 +49,29 @@
   </a>
   <div class="top-right">
     <div class="stats" id="stats"></div>
+    <button class="round" id="installBtn" data-t-aria="install" data-t-title="install" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.6"/><path d="M12 7.5v7M9 11.5l3 3 3-3M10.5 18.5h3"/></svg></button>
+    <button class="chip-btn hi share-btn" id="shareTop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 12.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-6.5"/></svg><span data-t="shareMix">Share mix</span></button>
+    <button class="chip-btn donate-btn" id="donateBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/></svg><span data-t="donate">Donate</span></button>
     <button class="chip-btn" id="langBtn" data-t="langBtn">বাং</button>
     <button class="round" id="fsBtn" data-t-aria="fullscreen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
   </div>
 </header>
 
 <main class="focus" id="focus"><div class="focus-in">
+  <div class="over">
   <input id="intent" class="intent" type="text" maxlength="60" data-t-ph="intent" data-t-aria="intent" autocomplete="off">
   <div class="mode" id="modeLabel">Focus</div>
+  <div class="date-line" id="dateLine" hidden></div>
+  </div>
   <div class="clock" id="clock" role="timer" data-face="serif">25:00</div>
   <div class="analog" id="analog" hidden aria-hidden="true"></div>
-  <div class="date-line" id="dateLine" hidden></div>
+  <div class="under">
   <div class="progress" aria-hidden="true"><div id="progFill"></div></div>
   <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <div class="actions">
     <button id="focusBtn" class="primary">Start focus</button>
     <button id="resetBtn" class="round ghosted" data-t-aria="reset" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></button>
+  </div>
   </div>
 </div></main>
 
@@ -103,7 +111,7 @@
         <input id="presetName" type="text" maxlength="28" data-t-ph="mixName" data-t-aria="mixName">
         <button type="submit" data-t="saveMix">Save current mix</button>
       </form>
-      <button class="text-btn" id="shareBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg><span data-t="share">Copy link</span></button>
+      <button class="text-btn" id="shareBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg><span data-t="shareMix">Share mix</span></button>
     </div>
   </section>
 
@@ -112,6 +120,9 @@
       <div class="tabs" id="modeSeg" role="radiogroup" data-t-aria="clockTitle">
         <button role="radio" data-v="timer" data-t="modeTimer">Timer</button><button role="radio" data-v="stopwatch" data-t="modeStopwatch">Stopwatch</button><button role="radio" data-v="clock" data-t="modeClock">Clock</button>
       </div></div>
+    <label class="saver-row"><span class="sv-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="16" height="10" rx="2.5"/><path d="M21 10.5v3"/><path d="m11.5 9-2 3h3l-2 3"/></svg></span>
+      <span class="sv-txt"><b data-t="saver">Power saver</b><small data-t="saverHint">Black screen, a dim clock, sound only.</small></span>
+      <span class="switch"><input type="checkbox" id="saverSw"><span></span></span></label>
     <div class="faces" id="faces" role="group" data-t-aria="face"></div>
     <div id="timerOpts">
       <div class="t-row"><span class="t-label" data-t="focusLen">Focus</span><div class="t-step" id="optFocus"></div></div>
@@ -186,6 +197,70 @@
   <button class="dk" data-panel="quran" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5z"/><path d="M12 6v13.5"/></svg><span data-t="quran">Quran</span><i class="live-dot"></i></button>
   <button class="dk" id="hideBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10.7 10.7 0 0 1 12 5c5.5 0 9 7 9 7a16 16 0 0 1-2.7 3.6M6.6 6.6C4.1 8.3 3 12 3 12s3.5 7 9 7a9.6 9.6 0 0 0 4.4-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg><span data-t="hide">Hide</span></button>
 </nav>
+
+<!-- ============ CARDS (donate, share, install, no sound) ============ -->
+<div class="modal" id="m-donate" hidden role="dialog" aria-modal="true" aria-labelledby="dnTitle">
+  <div class="card">
+    <button class="x-btn" data-close data-t-aria="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="card-hero donate-hero"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/></svg></div>
+    <h2 id="dnTitle" data-t="dnTitle">Keep Focus Waves free, forever</h2>
+    <p class="lead" data-t="dnLead">No ads. No sign-up. No paywall. Just the sea, whenever you need it.</p>
+    <p class="body" data-t="dnBody"></p>
+    <p class="body strong" data-t="dnSmall"></p>
+    <div class="pay">
+      <div class="pay-h"><b data-t="dnMobile">Mobile banking</b><span class="tag" data-t="dnSend">Send Money</span></div>
+      <div class="wallets"><span class="w-bkash">bKash</span><span class="w-nagad">Nagad</span><span class="w-rocket">Rocket</span><span class="w-upay">Upay</span></div>
+      <div class="copy-row"><code class="num">01913629587</code><button class="copy" data-copy="01913629587" data-t="copy">Copy</button></div>
+    </div>
+    <div class="pay">
+      <div class="pay-h"><b data-t="dnBank">Bank transfer</b></div>
+      <dl class="bank">
+        <dt data-t="dnBankName">Bank</dt><dd>Sonali Bank PLC</dd>
+        <dt data-t="dnBranch">Branch</dt><dd>BUET Branch</dd>
+        <dt data-t="dnAcName">Account name</dt><dd>Arafat Rahman Fahad</dd>
+        <dt data-t="dnAcNo">Account no.</dt><dd><span class="copy-row in"><code class="num">4404001041746</code><button class="copy" data-copy="4404001041746" data-t="copy">Copy</button></span></dd>
+      </dl>
+    </div>
+    <p class="thanks" data-t="dnThanks">JazakAllahu khairan. Every gift, big or small, keeps the waves going for someone else.</p>
+  </div>
+</div>
+
+<div class="modal" id="m-share" hidden role="dialog" aria-modal="true" aria-labelledby="shTitle">
+  <div class="card">
+    <button class="x-btn" data-close data-t-aria="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="share-art" id="shareArt"><div class="sa-ico" id="shareIcons"></div><div class="sa-txt"><small data-t="shKicker">My focus mix</small><b id="shareName"></b><span id="shareSub"></span></div></div>
+    <h2 id="shTitle" data-t="shTitle">Share your sea</h2>
+    <p class="lead" data-t="shLead">Send this exact mix to a friend. One tap and they're sitting by the same sea, hearing what you hear.</p>
+    <div class="share-grid" id="shareGrid"></div>
+    <div class="copy-row link"><input id="shareUrl" readonly aria-label="Link"><button class="copy" id="shareCopy" data-t="copy">Copy</button></div>
+    <p class="hint flush center" data-t="shHint">The link carries the sounds, their levels and the focus pulse. Nothing about you.</p>
+  </div>
+</div>
+
+<div class="modal" id="m-install" hidden role="dialog" aria-modal="true" aria-labelledby="inTitle">
+  <div class="card narrow">
+    <button class="x-btn" data-close data-t-aria="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="card-hero"><img src="brand/fw-icon-192.png" alt="" width="64" height="64"></div>
+    <h2 id="inTitle" data-t="inTitle">Get Focus Waves as an app</h2>
+    <p class="lead" data-t="inLead">Opens full screen from your home screen, like any other app. Free, tiny, nothing to sign up for.</p>
+    <ol class="steps" id="installSteps"></ol>
+  </div>
+</div>
+
+<div class="modal" id="m-nosound" hidden role="dialog" aria-modal="true" aria-labelledby="nsTitle">
+  <div class="card narrow">
+    <button class="x-btn" data-close data-t-aria="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="card-hero warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l4 6M21 9l-4 6"/></svg></div>
+    <h2 id="nsTitle" data-t="nsTitle">No sound here?</h2>
+    <p class="lead" id="nsBody"></p>
+    <ol class="steps" id="nsSteps"></ol>
+    <div class="ns-actions">
+      <a class="btn-main" id="nsChrome" hidden data-t="nsChrome">Open in Chrome</a>
+      <button class="btn-soft" id="nsCopy" data-t="nsCopy">Copy link</button>
+      <button class="btn-soft" id="nsRetry" data-t="nsRetry">Try again</button>
+    </div>
+  </div>
+</div>
 <div class="hidden-hint" id="hiddenHint" data-t="showHint">Tap anywhere to bring the controls back</div>
 
 <script src="i18n.js"></script>

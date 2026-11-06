@@ -26,10 +26,11 @@ Every push to `main` deploys automatically (Workers Builds runs `npx wrangler de
 | `sw.js`, `manifest.webmanifest` | Installable app / offline support |
 
 ## Sounds
-- **Nature:** waves, wind, birds (koel, spotted dove, songbirds), stream, fireplace, seagulls, leaves, cicadas
+- **Nature:** waves, wind, birds (koel, spotted dove, songbirds), stream, fireplace, seagulls, leaves, cicadas, waterfall, wind chimes
+- **Cozy & travel:** night train, purring cat, old wall clock
 - **Rain & storm:** rain, tin roof, thunder
 - **Night:** crickets, frogs, owl
-- **Music (optional, folded away):** lofi beats, soft piano, ambient pad, nylon guitar (fingerpicked, Karplus-Strong strings), kalimba, bansuri, tanpura drone, and a focus synth (even 16ths, no melody). The chord instruments follow one shared progression so they blend. **Music never plays while the Quran is playing**; nature sounds keep going.
+- **Music (optional, folded away):** lofi beats, soft piano, ambient pad, nylon guitar (fingerpicked, Karplus-Strong strings), kalimba, bansuri, tanpura drone, singing bowl, and a focus synth (even 16ths, no melody). The chord instruments follow one shared progression so they blend. **Music never plays while the Quran is playing**; nature sounds keep going.
 - **Focus noise:** fan, white, pink, brown
 
 Each one is a small simulation with random events and slowly drifting character, not a recording, so nothing loops.
@@ -65,8 +66,21 @@ If you later host the files on R2, add a CORS rule allowing `https://focus.freak
 - If the audio thread ever throws, the engine restarts itself with the same mix.
 - Still silent: check the tab isn't muted, the output device, and that the browser is recent (AudioWorklet is required).
 
+## Top bar
+- **Install** (phone icon): the browser's own install prompt where there is one (Chrome, Edge, Android); step-by-step instructions on iPhone/iPad and elsewhere. Hidden once installed.
+- **Share mix**: a card with the mix, WhatsApp / Messenger / Facebook / Telegram / X / the phone's share sheet, and the link.
+- **Donate**: why the site needs support, with bKash / Nagad / Rocket / Upay (Send Money) and bank details, each with a copy button.
+
+## Power saver
+Clock panel → Power saver (or press `p`): the scene stops drawing completely, the screen goes black with a dim clock
+that drifts a few pixels each minute (no OLED burn-in). Sound keeps playing.
+
+## No sound in in-app browsers
+Facebook, Messenger, Instagram and similar in-app browsers often can't run the AudioWorklet engine. The intro shows a warning there,
+and if the engine fails or stays silent the app shows a card with steps, "Open in Chrome" (Android) and "Copy link".
+
 ## Share links
-"Copy link to this mix" gives a link like `focus.freakingwaves.com/#mix=rain-60.waves-30`. Opening it loads that mix.
+"Share mix" gives a link like `focus.freakingwaves.com/#mix=rain-60.waves-30&n=Borsha`. Opening it loads that mix and shows its name.
 
 ## Quran audio
 Sources are tried in order until one plays (12 s timeout each):

@@ -8,7 +8,7 @@ const Scene = (() => {
   const cv = document.getElementById("scene"), g = cv.getContext("2d");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let W = 0, H = 0, dpr = 1, t = 0, last = performance.now();
-  const KEYS = ["gulls", "leaves", "cicadas", "owl", "guitar", "kalimba", "flute", "tanpura", "arp", "rain", "tinroof", "thunder", "waves", "wind", "birds", "stream", "fire", "crickets", "frogs", "fan", "lofi", "piano", "pad", "white", "pink", "brown"];
+  const KEYS = ["gulls", "leaves", "cicadas", "owl", "guitar", "kalimba", "flute", "tanpura", "arp", "rain", "tinroof", "thunder", "waves", "wind", "birds", "stream", "fire", "crickets", "frogs", "fan", "lofi", "piano", "pad", "white", "pink", "brown", "waterfall", "chimes", "bowl", "train", "purr", "clock"];
   const target = {}, lvl = {};
   KEYS.forEach(k => (target[k] = lvl[k] = 0));
   let windNow = 0.3, foam = 0, flash = 0, bolt = null, hourOverride = null, clockSpec = null, clockRect = null;
@@ -70,7 +70,9 @@ const Scene = (() => {
   const sprites = [0, 1, 2, 3].map(i => cloudSprite(320, 120, i));
   const clouds = Array.from({ length: 7 }, (_, i) => ({ x: R() * 1.3 - 0.15, y: rr(0.04, 0.34), s: rr(0.8, 1.7), d: rr(0.5, 1.2), sp: sprites[i % 4] }));
   // distant country boats (nouka) with square sails and a bamboo canopy; d = how far out (0 near the horizon)
-  const boats = [{ x: 0.2, v: 0.0014, s: 1, ph: 1, d: 0.22 }, { x: 0.63, v: -0.001, s: 0.72, ph: 2.3, d: 0.11 }, { x: 0.9, v: 0.0007, s: 0.52, ph: 4.1, d: 0.04 }];
+  // kinds: a sailing nouka, a covered country boat poled from the stern, a small rowing boat, an engine trawler
+  const boats = [{ x: 0.2, v: 0.0014, s: 1, ph: 1, d: 0.22, kind: "sail" }, { x: 0.63, v: -0.0009, s: 0.8, ph: 2.3, d: 0.13, kind: "chhoi" },
+    { x: 0.9, v: 0.0007, s: 0.6, ph: 4.1, d: 0.05, kind: "trawler" }, { x: 0.42, v: -0.0005, s: 0.7, ph: 5.2, d: 0.08, kind: "row" }];
   const shipLights = [{ x: 0.36, ph: 0, c: "255,240,210" }, { x: 0.74, ph: 2, c: "255,120,110" }];
   const trees = Array.from({ length: 90 }, () => ({ h: rr(0.4, 1), w: rr(0.6, 1.4), palm: R() < 0.18 }));
 
@@ -144,18 +146,18 @@ const Scene = (() => {
       g.strokeStyle = lg; g.lineWidth = 1.4; g.beginPath(); g.moveTo(m.x, m.y); g.lineTo(m.x - m.vx * 0.18, m.y - m.vy * 0.18); g.stroke();
     }
 
-    /* sun / moon */
-    const isNight = night > 0.5, narrow = W < 700;
-    const bx = W * (narrow ? 0.82 : 0.865) - par.x * 6, by = narrow ? H * 0.17 : horizon - H * (isNight ? 0.31 : 0.21);
-    const bodyA = 1 - overcast * 0.9;
+    /* sun / moon: the sun climbs an arc from sunrise (left) to sunset (right); the moon crosses the night sky
+       showing tonight's real phase. Both sit lower, bigger and warmer near the horizon. */
+    const narrow = W < 700, sunU = (hour - 6) / 12.2, moonU = ((hour - 18 + 24) % 24) / 12;
+    const isNight = night > 0.5, up = isNight ? moonU : sunU;
+    const arcX = u => W * (0.1 + 0.8 * u) - par.x * 6, arcY = u => horizon - Math.sin(Math.PI * Math.max(0, Math.min(1, u))) * horizon * (narrow ? 0.72 : 0.68);
+    const bx = arcX(Math.max(0, Math.min(1, up))), by = arcY(up) + (up < 0 || up > 1 ? 40 : 0);
+    const alt = Math.sin(Math.PI * Math.max(0, Math.min(1, up)));                 // 0 on the horizon, 1 overhead
+    const bodyA = (1 - overcast * 0.9) * (up > -0.03 && up < 1.03 ? 1 : 0);
     if (bodyA > 0.04) {
-      const gc = isNight ? [222, 230, 255] : mix([255, 206, 150], [255, 246, 228], 1 - P.night * 2);
-      const glow = g.createRadialGradient(bx, by, 0, bx, by, H * 0.34);
-      glow.addColorStop(0, rgb(gc, 0.32 * bodyA)); glow.addColorStop(1, rgb(gc, 0));
-      g.fillStyle = glow; g.fillRect(0, 0, W, horizon);
-      const r = narrow ? 13 : isNight ? 16 : 22;
-      g.fillStyle = rgb(gc, 0.96 * bodyA); g.beginPath(); g.arc(bx, by, r, 0, 6.283); g.fill();
-      if (isNight) { g.fillStyle = `rgba(150,160,190,${0.3 * bodyA})`; [[-5, -4, 4], [4, 5, 3], [6, -6, 2]].forEach(([x, y, q]) => { g.beginPath(); g.arc(bx + x * r / 16, by + y * r / 16, q * r / 16, 0, 6.283); g.fill(); }); }
+      g.save(); g.beginPath(); g.rect(0, 0, W, horizon + 1); g.clip();
+      if (isNight) drawMoon(bx, by, alt, bodyA, narrow); else drawSun(bx, by, alt, bodyA, narrow, horizon);
+      g.restore();
     }
 
     /* clouds */
@@ -185,7 +187,7 @@ const Scene = (() => {
 
     /* birds crossing */
     const flyers = Math.max(lvl.birds, lvl.gulls);
-    if (!isNight && !reduce && flocks.length < 1 && R() < dt / 40) spawnFlock(true);       // a few far-off birds now and then
+    if (!isNight && !reduce && flocks.length < 1 && R() < dt / (narrow ? 18 : 40)) spawnFlock(true);       // a few far-off birds now and then
     if (!isNight && flyers > 0.05 && flocks.length < 2 && R() < dt / 14 * flyers) spawnFlock();
     for (let i = flocks.length - 1; i >= 0; i--) {
       const f = flocks[i]; f.x += f.vx * dt; f.y += Math.sin(t * 0.7 + f.ph) * 4 * dt;
@@ -252,6 +254,7 @@ const Scene = (() => {
         g.fillStyle = isNight ? `rgba(220,230,255,${a})` : `rgba(255,236,200,${a})`;
         g.fillRect(bx - w / 2 + Math.sin(t + i) * 6, y, w, 1.5 + f * 2.2);
       }
+      g.restore();
     }
 
     /* rain ripples on the sea */
@@ -301,11 +304,17 @@ const Scene = (() => {
       g.fillStyle = `rgba(255,${180 + (s.life * 60) | 0},90,${s.life})`; g.beginPath(); g.arc(s.x, s.y, 1.6 * s.life + 0.4, 0, 6.283); g.fill();
     }
 
-    /* coconut palms on the shore, swaying with the wind (wide screens only) */
-    if (W >= 760) {
-      const sway = 0.03 + lvl.wind * windNow * 0.12 + lvl.thunder * 0.05, col = rgb(mix([6, 10, 14], P.near, 0.25), 0.94);
-      palm(W * 0.02, H * 1.02, H * 0.6, 0.2, sway, col, 1);
-      palm(W * 0.17, H * 1.03, H * 0.4, -0.08, sway * 1.2, col, 0.68);
+    /* coconut palms on the shore, swaying with the wind */
+    {
+      const sway = 0.03 + lvl.wind * windNow * 0.12 + lvl.thunder * 0.05, col = rgb(mix([6, 10, 14], P.near, 0.25), 0.95);
+      if (W >= 760) {
+        palm(W * 0.02, H * 1.02, H * 0.6, 0.2, sway, col, 1);
+        palm(W * 0.17, H * 1.03, H * 0.4, -0.08, sway * 1.2, col, 0.68);
+      } else {                                              // phones: one palm leaning in from the left, a smaller one on the right
+        const k = Math.min(1, W / 430);
+        palm(-W * 0.04, H * 1.02, H * 0.34, 0.24, sway, col, 0.56 * k);
+        palm(W * 1.04, H * 1.03, H * 0.22, -0.3, sway * 1.2, col, 0.4 * k);
+      }
     }
 
     /* rain streaks, slanted by the live wind */
@@ -363,6 +372,7 @@ const Scene = (() => {
     if (key === spr.key) return spr;
     const c = spr.c, x = c.getContext("2d"), font = `ultra-condensed 420 ${fs}px Archivo, "Arial Narrow", sans-serif`, lh = fs * 0.8, pad = fs * 0.05;
     x.font = font; const w = Math.max(...lines.map(l => x.measureText(l).width)) + pad * 2, h = lh * lines.length + pad * 2;
+    const m0 = x.measureText(lines[0]), asc = m0.actualBoundingBoxAscent || fs * 0.72, desc = m0.actualBoundingBoxDescent || 0;
     c.width = Math.ceil(w); c.height = Math.ceil(h);
     x.font = font; x.textAlign = "center"; x.textBaseline = "alphabetic"; x.lineJoin = "round";
     x.fillStyle = x.strokeStyle = "#fff"; x.lineWidth = fs * 0.03;
@@ -372,26 +382,85 @@ const Scene = (() => {
     gr.addColorStop(0, rgb(cols[0], 0.98)); gr.addColorStop(0.6, rgb(cols[1], 0.93)); gr.addColorStop(1, rgb(cols[2], 0.84));
     x.fillStyle = gr; x.fillRect(0, 0, w, h);
     x.globalCompositeOperation = "source-over";
-    Object.assign(spr, { key, w, h, lh, pad });
+    Object.assign(spr, { key, w, h, lh, pad, inkTop: pad + lh - fs * 0.07 - asc, inkBot: pad + lh * lines.length - fs * 0.07 + desc });
     return spr;
   }
+  let rectCb = null, lastRect = "";
   function drawClock(horizon, P, night, overcast) {
-    if (!clockSpec) { clockRect = null; return; }
+    if (!clockSpec) { if (clockRect) { clockRect = null; lastRect = ""; rectCb && rectCb(null); } return; }
     const { text, x = 0, y = 0, s = 1, o = 1 } = clockSpec, seaH = H - horizon, narrow = W < 600;
-    // phones: hours over minutes, like a bedside clock; wide screens: one line
-    const parts = text.split(":"), lines = narrow && parts.length >= 2 ? [parts.slice(0, -1).join(":"), parts[parts.length - 1]] : [text];
-    const bottom = horizon + seaH * (narrow ? 0.3 : 0.34) + y, room = bottom - H * (narrow ? 0.17 : 0.2);
+    // always one line. On phones it stands further out, its foot just past the horizon, so it sits in the middle of the view
+    const lines = [text];
+    const bottom = horizon + seaH * (narrow ? 0.17 : 0.34) + y, room = bottom - H * (narrow ? 0.2 : 0.2);
     g.font = `ultra-condensed 420 100px Archivo, "Arial Narrow", sans-serif`;
-    const per100 = Math.max(...lines.map(l => g.measureText(l).width)) / 100;
-    let fs = Math.min(room / (0.8 * lines.length), (W * (narrow ? 0.86 : 0.8)) / per100) * s * (narrow ? 0.82 : 0.66);   // a calmer default size
+    const per100 = g.measureText(text).width / 100;
+    const fs = Math.min(room / 0.8, (W * (narrow ? 0.84 : 0.8)) / per100) * s * (narrow ? 0.8 : 0.66);
     const sky = mix(P.top, GREY, overcast * 0.4), hor = mix(P.hor, GREY, overcast * 0.4), lift = 0.25 * night;
-    const ivory = [250, 246, 236], sp = clockSprite(lines, fs, [mix(sky, ivory, 0.95), mix(hor, ivory, 0.84 + lift * 0.5), mix(hor, ivory, 0.66 + lift * 0.6)]);
+    const ivory = [252, 249, 241], sp = clockSprite(lines, fs, [mix(sky, ivory, 0.97), mix(hor, ivory, 0.9 + lift * 0.3), mix(hor, ivory, 0.8 + lift * 0.4)]);
     const dx = W / 2 + x - sp.w / 2, dy = bottom - sp.h + sp.pad + fs * 0.07;
     g.save(); g.globalAlpha = Math.max(0, Math.min(1, o));
-    g.shadowColor = `rgba(0,0,0,${0.18 + night * 0.12})`; g.shadowBlur = fs * 0.07; g.shadowOffsetY = fs * 0.015;
+    g.shadowColor = `rgba(0,0,0,${0.14 + night * 0.12})`; g.shadowBlur = fs * 0.06; g.shadowOffsetY = fs * 0.012;
     g.drawImage(spr.c, dx, dy);
     g.restore();
-    clockRect = { x: dx, y: dy, w: sp.w, h: sp.h };
+    clockRect = { x: dx, y: dy + sp.inkTop, w: sp.w, h: sp.inkBot - sp.inkTop };
+    const key = [clockRect.x, clockRect.y, clockRect.w, clockRect.h].map(v => Math.round(v)).join(",");
+    if (key !== lastRect) { lastRect = key; rectCb && rectCb(clockRect); }
+  }
+
+  function drawSun(x, y, alt, A, narrow, horizon) {
+    const low = Math.pow(1 - alt, 2.2), r = (narrow ? 15 : 21) * (1 + low * 0.35);
+    const core = mix([255, 252, 242], [255, 196, 120], low), rim = mix([255, 236, 190], [255, 120, 60], low);
+    // wide atmospheric glow (warmer and broader when low), then a tight bloom
+    const wide = g.createRadialGradient(x, y, 0, x, y, H * (0.35 + low * 0.25));
+    wide.addColorStop(0, rgb(mix([255, 240, 210], [255, 150, 80], low), (0.26 + low * 0.18) * A)); wide.addColorStop(1, rgb(rim, 0));
+    g.fillStyle = wide; g.fillRect(0, 0, W, horizon + 1);
+    if (low > 0.3) {                                                        // the band of light along the horizon at sunrise / sunset
+      const band = g.createRadialGradient(x, horizon, 0, x, horizon, W * 0.55);
+      band.addColorStop(0, rgb([255, 150, 90], 0.3 * low * A)); band.addColorStop(1, "rgba(255,150,90,0)");
+      g.save(); g.scale(1, 0.25); g.fillStyle = band; g.fillRect(0, (horizon - W * 0.55) * 4, W, W * 0.55 * 8); g.restore();
+    }
+    const bloom = g.createRadialGradient(x, y, r * 0.6, x, y, r * 4.5);
+    bloom.addColorStop(0, rgb(core, 0.55 * A)); bloom.addColorStop(1, rgb(core, 0));
+    g.fillStyle = bloom; g.beginPath(); g.arc(x, y, r * 4.5, 0, 6.283); g.fill();
+    // the disc: bright centre, slightly darker and warmer at the limb; squashed a little by the air near the horizon
+    const disc = g.createRadialGradient(x, y - r * 0.15, 0, x, y, r);
+    disc.addColorStop(0, rgb([255, 255, 250], A)); disc.addColorStop(0.65, rgb(core, A)); disc.addColorStop(1, rgb(rim, 0.95 * A));
+    g.fillStyle = disc; g.beginPath(); g.ellipse(x, y, r, r * (1 - low * 0.12), 0, 0, 6.283); g.fill();
+  }
+
+  // the moon's face: grey highlands and darker seas (maria), made once from noise
+  const moonTex = (() => {
+    const N = 128, c = document.createElement("canvas"); c.width = c.height = N; const x = c.getContext("2d"), img = x.createImageData(N, N);
+    const maria = [[0.38, 0.35, 0.16], [0.6, 0.3, 0.12], [0.55, 0.55, 0.18], [0.35, 0.62, 0.1], [0.7, 0.62, 0.08], [0.46, 0.8, 0.07]];
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const u = i / N, v = j / N, dx = u - 0.5, dy = v - 0.5, d = Math.hypot(dx, dy); const k = (j * N + i) * 4;
+      if (d > 0.5) { img.data[k + 3] = 0; continue; }
+      let m = 0; for (const [cx, cy, cr] of maria) { const q = Math.hypot(u - cx, v - cy) / cr; if (q < 1) m = Math.max(m, (1 - q * q) * 0.9); }
+      const n = (Math.sin(u * 41 + v * 13) * Math.sin(v * 37 - u * 7) + Math.sin(u * 97) * Math.sin(v * 89)) * 0.05;
+      const limb = 1 - Math.pow(d / 0.5, 6) * 0.25, b = (226 - m * 52 + n * 255) * limb;
+      img.data[k] = b; img.data[k + 1] = b * 0.995; img.data[k + 2] = b * 0.97; img.data[k + 3] = 255;
+    }
+    x.putImageData(img, 0, 0); return c;
+  })();
+  // phase: 0 new, 0.5 full (from a known new moon, 6 Jan 2000 18:14 UTC; one lunation is 29.53 days)
+  const moonPhase = () => { const p = ((Date.now() - Date.UTC(2000, 0, 6, 18, 14)) / 864e5 / 29.530588853) % 1; return p < 0 ? p + 1 : p; };
+  function drawMoon(x, y, alt, A, narrow) {
+    const ph = moonPhase(), lit = (1 - Math.cos(ph * 6.283)) / 2, r = (narrow ? 13 : 17) * (1 + (1 - alt) * 0.15);
+    const tint = mix([236, 240, 255], [255, 226, 180], Math.pow(1 - alt, 3));
+    const halo = g.createRadialGradient(x, y, r, x, y, r * (6 + lit * 10));
+    halo.addColorStop(0, rgb(tint, (0.08 + lit * 0.22) * A)); halo.addColorStop(1, rgb(tint, 0));
+    g.fillStyle = halo; g.beginPath(); g.arc(x, y, r * (6 + lit * 10), 0, 6.283); g.fill();
+    // earthshine: the dark part only just shows; then the lit part, bounded by the limb and the terminator.
+    // Waxing: lit on the right; waning: lit on the left.
+    g.save(); g.globalAlpha = A * 0.13; g.drawImage(moonTex, x - r, y - r, r * 2, r * 2);
+    const k = Math.cos(ph * 6.283), side = ph < 0.5 ? 1 : -1;
+    g.beginPath();
+    for (let i = 0; i <= 32; i++) { const a = -Math.PI / 2 + Math.PI * i / 32; g.lineTo(x + side * Math.cos(a) * r, y + Math.sin(a) * r); }
+    for (let i = 32; i >= 0; i--) { const a = -Math.PI / 2 + Math.PI * i / 32; g.lineTo(x + side * Math.cos(a) * r * k, y + Math.sin(a) * r); }
+    g.closePath(); g.clip();
+    g.globalAlpha = A; g.drawImage(moonTex, x - r, y - r, r * 2, r * 2);
+    g.globalCompositeOperation = "multiply"; g.fillStyle = rgb(tint); g.fillRect(x - r, y - r, r * 2, r * 2);
+    g.restore();
   }
 
   function drawBoats(dt, horizon, P, night, overcast, amp) {
@@ -406,19 +475,49 @@ const Scene = (() => {
       b.x += b.v * dt * (1 + lvl.wind * 1.5); if (b.x > 1.15) b.x = -0.15; if (b.x < -0.15) b.x = 1.15;
       const k = b.s * sc * (0.55 + b.d * 2.2), x = b.x * W - par.x * (2 + b.d * 20), y = horizon + 3 + b.d * seaH * 0.45 + Math.sin(t * 0.9 + b.ph) * (1 + amp * 0.5) * k;
       g.save(); g.translate(x, y); g.rotate(Math.sin(t * 0.7 + b.ph) * 0.03 * (1 + lvl.waves * 2)); g.scale(k * (b.v < 0 ? -1 : 1), k);
-      g.fillStyle = sail;                                   // the square sail on its mast
-      g.beginPath(); g.moveTo(5, -9); g.lineTo(7, -44); g.lineTo(27, -40); g.quadraticCurveTo(25, -24, 24, -8); g.closePath(); g.fill();
-      g.fillStyle = hull; g.fillRect(4.5, -46, 1.6, 40);
-      g.beginPath(); g.moveTo(-36, -9); g.quadraticCurveTo(-30, -2, -22, -1); g.lineTo(24, -1); g.quadraticCurveTo(32, -2, 36, -10); g.lineTo(31, 2); g.quadraticCurveTo(0, 8, -31, 2); g.closePath(); g.fill();   // hull with raised prow and stern
-      g.beginPath(); g.ellipse(-12, -1, 11, 8, 0, Math.PI, 0); g.fill();                                  // bamboo canopy (chhoi)
+      const lx = drawBoat(b, hull, sail);
       if (night > 0.45) {                                   // a lantern, and its light on the water
         const a = (night - 0.45) * 1.8 * (0.85 + 0.15 * Math.sin(t * 7 + b.ph));
-        const lg = g.createRadialGradient(-12, -6, 0, -12, -6, 16); lg.addColorStop(0, `rgba(255,200,120,${a})`); lg.addColorStop(1, "rgba(255,200,120,0)");
-        g.fillStyle = lg; g.fillRect(-28, -22, 32, 32); g.fillStyle = `rgba(255,220,150,${a})`; g.fillRect(-13, -7, 2.4, 2.4);
-        for (let j = 0; j < 5; j++) { g.fillStyle = `rgba(255,200,120,${a * (0.35 - j * 0.06)})`; g.fillRect(-16 + Math.sin(t * 2 + j) * 2, 5 + j * 4, 8 - j, 1.2); }
+        const [ex, ey] = lx;
+        const lg = g.createRadialGradient(ex, ey, 0, ex, ey, 16); lg.addColorStop(0, `rgba(255,200,120,${a})`); lg.addColorStop(1, "rgba(255,200,120,0)");
+        g.fillStyle = lg; g.fillRect(ex - 16, ey - 16, 32, 32); g.fillStyle = `rgba(255,220,150,${a})`; g.fillRect(ex - 1.2, ey - 1.2, 2.4, 2.4);
+        for (let j = 0; j < 5; j++) { g.fillStyle = `rgba(255,200,120,${a * (0.35 - j * 0.06)})`; g.fillRect(ex - 4 + Math.sin(t * 2 + j) * 2, 5 + j * 4, 8 - j, 1.2); }
       }
       g.restore();
     }
+  }
+
+  // each boat drawn in its own units (about 72 wide, waterline at y = 0); returns where its lantern hangs
+  function drawBoat(b, hull, sail) {
+    const hullPath = (L, prow, sheer) => { g.beginPath(); g.moveTo(-L, -prow); g.quadraticCurveTo(-L * 0.83, -2, -L * 0.6, -1); g.lineTo(L * 0.66, -1); g.quadraticCurveTo(L * 0.88, -2, L, -prow * sheer);
+      g.lineTo(L * 0.86, 2); g.quadraticCurveTo(0, 8, -L * 0.86, 2); g.closePath(); g.fill(); };
+    const person = (x, y, h, lean = 0) => { g.save(); g.translate(x, y); g.rotate(lean); g.fillRect(-1.6, -h, 3.2, h * 0.62); g.beginPath(); g.arc(0, -h - 2, 2.4, 0, 6.283); g.fill(); g.restore(); };
+    if (b.kind === "sail") {                    // the square-sailed nouka (pal tola)
+      g.fillStyle = sail; g.beginPath(); g.moveTo(5, -9); g.lineTo(7, -44); g.lineTo(27, -40); g.quadraticCurveTo(25, -24, 24, -8); g.closePath(); g.fill();
+      g.fillStyle = hull; g.fillRect(4.5, -46, 1.6, 40); hullPath(36, 9, 1.1);
+      g.beginPath(); g.ellipse(-12, -1, 11, 8, 0, Math.PI, 0); g.fill(); return [-12, -6];
+    }
+    if (b.kind === "chhoi") {                   // a long covered country boat; the boatman poles it from the stern
+      g.fillStyle = hull; hullPath(40, 11, 1.25);
+      g.beginPath(); g.moveTo(-20, -1); g.quadraticCurveTo(-20, -15, -4, -15); g.quadraticCurveTo(12, -15, 12, -1); g.closePath(); g.fill();   // the bamboo canopy
+      const sw = Math.sin(t * 0.6 + b.ph) * 0.25;
+      person(26, -1, 15, -0.12 + sw * 0.2);
+      g.strokeStyle = hull; g.lineWidth = 1.3; g.beginPath(); g.moveTo(24 + sw * 6, -16); g.lineTo(34 - sw * 8, 14); g.stroke();
+      return [-4, -8];
+    }
+    if (b.kind === "row") {                     // a small fishing boat, two men, one rowing
+      g.fillStyle = hull; hullPath(24, 6, 1);
+      const r = Math.sin(t * 1.4 + b.ph);
+      person(-8, -1, 10, -0.15); person(9, -1, 9, 0.25 + r * 0.2);
+      g.strokeStyle = hull; g.lineWidth = 1.2; g.beginPath(); g.moveTo(10, -6); g.lineTo(22 + r * 6, 5 + r * 1.5); g.stroke();
+      return [-8, -12];
+    }
+    // an engine trawler: a boxy wheelhouse, a short mast with a pennant
+    g.fillStyle = hull; hullPath(38, 8, 1.4);
+    g.fillRect(-4, -15, 18, 14); g.fillRect(-2, -18, 14, 3); g.fillRect(-20, -24, 1.4, 23);
+    g.fillStyle = sail; g.fillRect(0, -12, 4, 4); g.fillRect(7, -12, 4, 4);
+    const fl = Math.sin(t * 3 + b.ph) * 1.5; g.fillStyle = hull; g.beginPath(); g.moveTo(-19, -24); g.lineTo(-12, -22 + fl); g.lineTo(-19, -20); g.closePath(); g.fill();
+    return [5, -10];
   }
 
   function palm(x0, y0, len, lean, sway, col, sc) {
@@ -434,39 +533,50 @@ const Scene = (() => {
       left.push([px + ox, py + oy]); right.push([px - ox, py - oy]);
     }
     g.beginPath(); left.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); right.reverse().forEach(([x, y]) => g.lineTo(x, y)); g.closePath(); g.fill();
-    // fronds: filled, tapered, drooping leaves with notches so the leaflets read
-    for (let k = 0; k < 11; k++) {
-      const side = k % 2 ? 1 : -1, spread = (k / 10 - 0.5) * 3.3;
+    // fronds: a curved midrib with many narrow leaflets hanging from both sides, as a coconut palm really reads in silhouette
+    g.strokeStyle = col; g.lineCap = "round";
+    for (let k = 0; k < 12; k++) {
+      const spread = (k / 11 - 0.5) * 3.4;
       const a = -Math.PI / 2 + spread + s * (1.2 + Math.abs(spread) * 0.3) + Math.sin(t * 1.6 + k * 1.7) * sway * 0.5;
       const L = (150 + ((k * 37) % 60)) * sc, droop = (0.42 + Math.abs(spread) * 0.25) * L;
       const ex = tx + Math.cos(a) * L, ey = ty + Math.sin(a) * L * 0.6 + droop, mx = tx + Math.cos(a) * L * 0.55, my = ty + Math.sin(a) * L * 0.55 - 6 * sc;
       const P = u => [(1 - u) * (1 - u) * tx + 2 * (1 - u) * u * mx + u * u * ex, (1 - u) * (1 - u) * ty + 2 * (1 - u) * u * my + u * u * ey];
-      const top = [], bot = [];
-      for (let i = 0; i <= 20; i++) {
+      g.lineWidth = 2.6 * sc; g.beginPath(); g.moveTo(tx, ty); g.quadraticCurveTo(mx, my, ex, ey); g.stroke();
+      g.lineWidth = Math.max(1.2, 3 * sc); g.beginPath();
+      for (let i = 2, st = quality < 0.9 ? 2 : 1; i <= 20; i += st) {
         const u = i / 20, [px, py] = P(u), [nx, ny] = P(Math.min(1, u + 0.02)), dx = nx - px, dy = ny - py, d = Math.hypot(dx, dy) || 1;
-        const notch = i % 2 ? 0.5 : 1, w = 15 * sc * Math.sin(Math.PI * Math.min(1, u * 1.15)) ** 0.8 * notch;
-        top.push([px - dy / d * w * 0.55, py + dx / d * w * 0.55]); bot.push([px + dy / d * w, py - dx / d * w]);
+        const len = 44 * sc * Math.pow(Math.sin(Math.PI * Math.min(1, u * 1.05)), 0.8) * (0.85 + 0.15 * Math.sin(i * 2.3 + k));
+        const flut = Math.sin(t * 3 + i * 0.7 + k) * sway * 0.8;
+        for (const side of [-1, 1]) {
+          let lx = -dy / d * side * 0.55 + dx / d * 0.6, ly = dx / d * side * 0.55 + dy / d * 0.6 + 1.35 + flut * side;
+          const ln = Math.hypot(lx, ly) || 1; lx /= ln; ly /= ln;
+          g.moveTo(px, py); g.quadraticCurveTo(px + lx * len * 0.55 - dx / d * len * 0.1, py + ly * len * 0.3, px + lx * len, py + ly * len);
+        }
       }
-      g.beginPath(); top.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); bot.reverse().forEach(([x, y]) => g.lineTo(x, y)); g.closePath(); g.fill();
+      g.stroke();
     }
     for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(tx + (i - 1.5) * 5 * sc, ty + 7 * sc + (i % 2) * 3 * sc, 5.5 * sc, 0, 6.283); g.fill(); }   // coconuts
   }
 
   function spawnFlock(far) {
-    const dir = R() < 0.5 ? 1 : -1, n = far ? 2 + ((R() * 4) | 0) : 3 + ((R() * 5) | 0), s = far ? rr(0.32, 0.5) : rr(0.6, 1.2);
+    const narrow = W < 700, dir = R() < 0.5 ? 1 : -1, n = far ? 2 + ((R() * 4) | 0) : 3 + ((R() * 5) | 0);
+    const s = (far ? rr(0.32, 0.5) : rr(0.6, 1.2)) * (narrow ? 1.5 : 1);
     flocks.push({
-      x: dir > 0 ? -120 : W + 120, y: (far ? rr(0.18, 0.42) : rr(0.12, 0.38)) * H, vx: dir * rr(38, 75) * s, ph: R() * 6,
+      x: dir > 0 ? -60 : W + 60, y: (narrow ? rr(0.1, 0.3) : far ? rr(0.18, 0.42) : rr(0.12, 0.38)) * H, vx: dir * rr(38, 75) * s * (narrow ? 0.8 : 1), ph: R() * 6,
       birds: Array.from({ length: n }, (_, i) => ({ dx: -dir * i * rr(14, 22) * s, dy: (i % 2 ? 1 : -1) * i * rr(5, 9) * s, s: s * rr(0.8, 1.1), hz: rr(2.2, 3.2), ph: R() * 6 })),
     });
   }
 
+  // Power saver: no frames at all. The canvas is cleared to black and the loop stops until it's switched off.
+  let paused = false, rafId = 0;
   function loop(now) {
+    rafId = 0; if (paused) return;
     const dt = Math.min(0.05, (now - last) / 1000); watchFps(now - last); last = now;
     if (!document.hidden) draw(dt);
-    requestAnimationFrame(loop);
+    rafId = requestAnimationFrame(loop);
   }
   resize();
-  if (reduce) setInterval(() => draw(1), 3000); else requestAnimationFrame(loop);
+  if (reduce) setInterval(() => !paused && draw(1), 3000); else rafId = requestAnimationFrame(loop);
 
   return {
     set(levels) { for (const k of KEYS) target[k] = levels[k] || 0; },
@@ -487,5 +597,11 @@ const Scene = (() => {
     setHour(h) { hourOverride = h; },
     setClock(spec) { clockSpec = spec; if (reduce) draw(0); },
     clockRect() { return clockRect; },
+    onClockRect(f) { rectCb = f; },
+    setPaused(on) {
+      if (on === paused) return; paused = on;
+      if (on) { if (rafId) cancelAnimationFrame(rafId); rafId = 0; g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#000"; g.fillRect(0, 0, cv.width, cv.height); g.setTransform(dpr, 0, 0, dpr, 0, 0); }
+      else { last = performance.now(); if (!reduce && !rafId) rafId = requestAnimationFrame(loop); else if (reduce) draw(0); }
+    },
   };
 })();
