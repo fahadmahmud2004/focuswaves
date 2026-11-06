@@ -65,6 +65,10 @@ svg { flex: none; }
 .begin:active { transform: scale(.97); }
 .begin svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s var(--ease); }
 .begin:hover svg { transform: translateX(3px); }
+.intro-why { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; font-size: 13px; color: var(--ink-2); animation: fadeUp 1s var(--ease) both 1.4s; max-width: 640px; }
+.intro-why li { display: flex; align-items: center; gap: 7px; }
+.intro-why li::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--sea); }
+@media (max-width: 520px) { .intro-why { flex-direction: column; align-items: center; gap: 4px; margin-top: 18px; font-size: 12.5px; } }
 .intro-sub { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: 12.5px; margin: 20px 0 0; animation: fadeUp 1s var(--ease) both 1.5s; }
 .intro-sub svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 .intro-shared { color: var(--sea); font-size: 13.5px; margin: 12px 0 0; max-width: 40ch; }
@@ -519,8 +523,9 @@ html[lang="bn"] .card h2 { font-family: "Hind Siliguri", sans-serif; font-weight
 .pay-h b { font-size: 14px; font-weight: 600; }
 .tag { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: rgba(143,211,200,.16); color: var(--sea); }
 .wallets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.wallets span { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px; color: #fff; letter-spacing: .01em; }
-.w-bkash { background: #d12053; } .w-nagad { background: #ec1c24; } .w-rocket { background: #8c3494; } .w-upay { background: #1a4a9c; }
+.wallets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+.wallets span { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.wallets img { width: 44px; height: 44px; border-radius: 12px; display: block; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
 .copy-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(0,0,0,.22); border-radius: 12px; padding: 8px 8px 8px 14px; }
 .copy-row.in { display: inline-flex; padding: 4px 4px 4px 10px; background: rgba(0,0,0,.18); }
 .copy-row .num { font: 600 19px/1 var(--tight); letter-spacing: .04em; font-variant-numeric: tabular-nums; color: var(--ink); user-select: all; }
