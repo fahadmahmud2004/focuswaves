@@ -65,10 +65,10 @@ svg { flex: none; }
 .begin:active { transform: scale(.97); }
 .begin svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s var(--ease); }
 .begin:hover svg { transform: translateX(3px); }
-.intro-why { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; font-size: 13px; color: var(--ink-2); animation: fadeUp 1s var(--ease) both 1.4s; max-width: 640px; }
-.intro-why li { display: flex; align-items: center; gap: 7px; }
-.intro-why li::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--sea); }
-@media (max-width: 520px) { .intro-why { flex-direction: column; align-items: center; gap: 4px; margin-top: 18px; font-size: 12.5px; } }
+/* one quiet line, like the tagline: no bullets */
+.intro-why { list-style: none; padding: 0; margin: 20px 0 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 0; font-size: 13px; color: var(--ink-2); letter-spacing: .01em; max-width: 620px; animation: fadeUp 1s var(--ease) both 1.4s; }
+.intro-why li + li::before { content: "·"; margin: 0 10px; color: var(--ink-3); }
+@media (max-width: 520px) { .intro-why { font-size: 12.5px; max-width: 330px; } }
 .intro-sub { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: 12.5px; margin: 20px 0 0; animation: fadeUp 1s var(--ease) both 1.5s; }
 .intro-sub svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 .intro-shared { color: var(--sea); font-size: 13.5px; margin: 12px 0 0; max-width: 40ch; }
@@ -466,7 +466,7 @@ body.zen, body.ui-off { cursor: none; }
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); opacity: 0; transition: opacity .5s; pointer-events: none; }
 .hidden-hint.show { opacity: 1; }
 
-.toast { position: fixed; left: 50%; top: 20px; transform: translate(-50%, -10px); opacity: 0; z-index: 40; background: var(--ink); color: var(--char); padding: 11px 17px; border-radius: 14px; font-size: 14px;
+.toast { position: fixed; left: 50%; top: 20px; transform: translate(-50%, -10px); opacity: 0; z-index: 60; background: var(--ink); color: var(--char); padding: 11px 17px; border-radius: 14px; font-size: 14px;
   box-shadow: 0 14px 40px rgba(0,0,0,.3); transition: .3s var(--ease); pointer-events: none; max-width: calc(100% - 32px); }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 

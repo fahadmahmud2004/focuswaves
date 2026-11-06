@@ -216,7 +216,7 @@
     $("#mixArt").style.background = artCss(m ? m.art : ["#56677a", "#1f2a35"]);
   }
   function renderMixes() {
-    const cats = [["nature", "nature"], ["cozy", "cozy"], ["focus", "focusCat"], ["music", "music"]];
+    const cats = [["nature", "nature"], ["focus", "focusCat"], ["music", "music"]];
     if (userMixes().length) cats.push(["yours", "yours"]);
     const f = $("#mixFilters"); f.innerHTML = "";
     cats.forEach(([id, key]) => { const b = document.createElement("button"); b.textContent = t(key); b.setAttribute("aria-pressed", mixFilter === id); b.onclick = () => { mixFilter = id; renderMixes(); }; f.appendChild(b); });
@@ -262,8 +262,8 @@
     const ta = document.createElement("textarea"); ta.value = txt; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select();
     let ok = false; try { ok = document.execCommand("copy"); } catch {} ta.remove(); return ok;
   }
-  const flashCopied = b => { const was = b.textContent; b.textContent = t("copiedShort"); b.classList.add("ok"); setTimeout(() => { b.textContent = t("copy"); b.classList.remove("ok"); }, 1600); };
-  $$("[data-copy]").forEach(b => b.addEventListener("click", async () => { await copyText(b.dataset.copy); flashCopied(b); }));
+  const flashCopied = b => { clearTimeout(b._t); b.textContent = "✓ " + t("copiedShort"); b.classList.add("ok"); b._t = setTimeout(() => { b.textContent = t("copy"); b.classList.remove("ok"); }, 1800); };
+  $$("[data-copy]").forEach(b => b.addEventListener("click", async () => { await copyText(b.dataset.copy); flashCopied(b); toast(t("copiedShort") + ": " + b.dataset.copy); }));
 
   /* ---- cards (donate, share, install, no sound): one at a time, close on the backdrop, the X or Escape ---- */
   const anyModal = () => [...$$(".modal")].some(m => !m.hidden);
@@ -309,7 +309,7 @@
     openModal("share");
   }
   $("#shareBtn").addEventListener("click", openShare); $("#shareTop").addEventListener("click", openShare);
-  $("#shareCopy").addEventListener("click", async e => { await copyText($("#shareUrl").value); flashCopied(e.currentTarget); toast(t("copied")); });
+  $("#shareCopy").addEventListener("click", async e => { const b = e.currentTarget; await copyText($("#shareUrl").value); flashCopied(b); toast(t("copied")); });
   $("#shareUrl").addEventListener("focus", e => e.target.select());
 
   /* ---- install as an app: the browser's own prompt where there is one, clear steps everywhere else ---- */
