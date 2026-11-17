@@ -5,12 +5,13 @@
    drips from the tin roof, birds crossing when they sing.
    ========================================================= */
 const Scene = (() => {
-  const cv = document.getElementById("scene"), g = cv.getContext("2d");
+  const cv = document.getElementById("scene"); let g = cv.getContext("2d");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let W = 0, H = 0, dpr = 1, t = 0, last = performance.now();
   const KEYS = ["gulls", "leaves", "cicadas", "owl", "guitar", "kalimba", "flute", "tanpura", "arp", "rain", "tinroof", "thunder", "waves", "wind", "birds", "stream", "fire", "crickets", "frogs", "fan", "lofi", "piano", "pad", "white", "pink", "brown", "waterfall", "chimes", "bowl", "train", "purr", "clock"];
   const target = {}, lvl = {};
   KEYS.forEach(k => (target[k] = lvl[k] = 0));
+  let island = null;
   let windNow = 0.3, foam = 0, flash = 0, bolt = null, hourOverride = null, clockSpec = null, clockRect = null;
   const par = { x: 0, y: 0, tx: 0, ty: 0 };
 
@@ -231,6 +232,10 @@ const Scene = (() => {
       if (fa > 0.03) { g.strokeStyle = `rgba(255,255,255,${Math.min(0.75, fa * 0.45)})`; g.lineWidth = 1 + f * 1.5; g.stroke(); }
       if (i === 1) drawBoats(dt, horizon, P, night, overcast, amp);
       if (i === 2) drawClock(horizon, P, night, overcast);
+      if (i === 3 && island) {
+        const narrow = W < 700, k = Math.max(0.7, Math.min(1.25, H / 820)) * (narrow ? 0.82 : 1);
+        drawIsland(island, W * (narrow ? 0.74 : 0.86) - par.x * (2 + f * 18), y0 + 3, k, P, night, overcast, amp);
+      }
     }
     // spray thrown up when a wave breaks
     for (let i = spray.length - 1; i >= 0; i--) {
@@ -558,6 +563,106 @@ const Scene = (() => {
     for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(tx + (i - 1.5) * 5 * sc, ty + 7 * sc + (i % 2) * 3 * sc, 5.5 * sc, 0, 6.283); g.fill(); }   // coconuts
   }
 
+  /* ---------- Your island: grows one thing per finished focus session ----------
+     state = { items: [{ k, seed }], grow: { k, p, seed } | null, ms: { pier, lighthouse, lanterns } }
+     kinds: bush (<20 min), palm (20+), hut (45+), boat (75+). Drawn as silhouettes in the scene's own light,
+     with warm windows, a lantern and a lighthouse beam after dark. */
+  const srng = s => () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+  function islandSize(n) { return 46 + 7 * Math.min(n, 16); }
+  function drawIsland(st, cx, cy, k, P, night, overcast, amp) {
+    const items = st.items.slice(-16), land = items.filter(x => x.k !== "boat"), n = land.length + (st.grow && st.grow.k !== "boat" ? 1 : 0);
+    const w = islandSize(n) * k, h = (10 + Math.min(n, 16) * 0.9) * k;
+    const bob = Math.sin(t * 0.5) * 0.6 * Math.min(1.5, amp * 0.5);
+    cy += bob;
+    const dark = mix([6, 10, 14], P.near, 0.25), sil = rgb(dark, 0.95);
+    const sand = mix(mix([206, 184, 140], P.hor, 0.35), [10, 16, 22], 0.25 + night * 0.65);
+    const hill = mix(mix([46, 78, 58], P.far, 0.35), [6, 10, 14], 0.35 + night * 0.55);
+    // foam ring where the water meets the sand
+    g.strokeStyle = `rgba(255,255,255,${0.16 + (1 - night) * 0.14})`; g.lineWidth = 1.2;
+    g.beginPath(); g.ellipse(cx, cy + 1, w * 1.06 + Math.sin(t * 1.3) * 2, h * 0.16 + 1, 0, 0, 6.283); g.stroke();
+    // sand and the green hill on it
+    g.fillStyle = rgb(sand); g.beginPath(); g.ellipse(cx, cy, w, h * 0.42, 0, Math.PI, 0); g.closePath(); g.fill();
+    g.fillStyle = rgb(hill); g.beginPath(); g.ellipse(cx - w * 0.05, cy, w * 0.82, h, 0, Math.PI, 0); g.closePath(); g.fill();
+    const top = x => cy - h * Math.sqrt(Math.max(0, 1 - ((x - cx + w * 0.05) / (w * 0.82)) ** 2));
+    const slotX = (seed, i) => { const r = srng(seed || 7); return cx - w * 0.05 + (r() * 1.5 - 0.75) * w * 0.82 * (i % 2 ? 0.95 : 0.7); };
+    const sway = 0.03 + lvl.wind * windNow * 0.1;
+    // milestones
+    if (st.ms && st.ms.pier) {
+      const px = cx + w * 0.7, len = 34 * k; g.fillStyle = sil;
+      g.fillRect(px, cy - 2 * k, len, 2.2 * k);
+      for (let i = 0; i <= 3; i++) g.fillRect(px + i * len / 3, cy - 2 * k, 1.6 * k, 6 * k);
+    }
+    if (st.ms && st.ms.lighthouse) {
+      const lx = cx - w * 0.45, ly = top(lx) + 2 * k, lh = 30 * k;
+      g.fillStyle = sil; g.beginPath(); g.moveTo(lx - 4.5 * k, ly); g.lineTo(lx - 2.6 * k, ly - lh); g.lineTo(lx + 2.6 * k, ly - lh); g.lineTo(lx + 4.5 * k, ly); g.closePath(); g.fill();
+      g.fillRect(lx - 3.6 * k, ly - lh - 6 * k, 7.2 * k, 6 * k); g.beginPath(); g.moveTo(lx - 4 * k, ly - lh - 6 * k); g.lineTo(lx, ly - lh - 10 * k); g.lineTo(lx + 4 * k, ly - lh - 6 * k); g.fill();
+      if (night > 0.3) {
+        const a = (night - 0.3) / 0.7, ang = t * 0.9, bx = lx, by = ly - lh - 3 * k;
+        g.fillStyle = `rgba(255,226,150,${0.9 * a})`; g.fillRect(bx - 2 * k, by - 2 * k, 4 * k, 3 * k);
+        const dir = Math.cos(ang), L = 220 * k * Math.abs(dir), spread = 10 * k;
+        const lg = g.createLinearGradient(bx, by, bx + dir * L, by);
+        lg.addColorStop(0, `rgba(255,232,170,${0.32 * a})`); lg.addColorStop(1, "rgba(255,232,170,0)");
+        g.fillStyle = lg; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + dir * L, by - spread); g.lineTo(bx + dir * L, by + spread); g.closePath(); g.fill();
+      }
+    }
+    const lights = [];
+    const drawItem = (it, i, p) => {
+      const x = slotX(it.seed, i), y = top(x) + 1.5 * k, e = 1 - (1 - p) * (1 - p);
+      g.fillStyle = sil; g.strokeStyle = sil;
+      if (it.k === "bush") { const r = 3.4 * k * (0.3 + 0.7 * e); g.beginPath(); g.arc(x - r * 0.8, y - r * 0.7, r, 0, 6.283); g.arc(x + r * 0.7, y - r * 0.8, r * 0.9, 0, 6.283); g.arc(x, y - r * 1.4, r, 0, 6.283); g.fill(); }
+      else if (it.k === "palm") { const r = srng(it.seed)(); palm(x, y, (16 + 10 * r) * k * (0.25 + 0.75 * e), (r - 0.5) * 0.4, sway, sil, 0.1 * k * (0.35 + 0.65 * e)); }
+      else if (it.k === "hut") {
+        const hw = 8 * k, hh = 6 * k, b = Math.min(1, p * 1.6), roof = Math.max(0, (p - 0.55) / 0.45);
+        g.fillRect(x - hw / 2, y - hh * b, hw, hh * b);
+        if (roof > 0) { g.beginPath(); g.moveTo(x - hw * 0.75, y - hh); g.lineTo(x, y - hh - 6 * k * roof); g.lineTo(x + hw * 0.75, y - hh); g.closePath(); g.fill(); }
+        if (p >= 1) lights.push([x + 1.2 * k, y - hh * 0.55, 1.8 * k, 2.2 * k]);
+      }
+    };
+    land.forEach((it, i) => drawItem(it, i, 1));
+    if (st.grow && st.grow.k !== "boat") drawItem(st.grow, land.length, st.grow.p);
+    // boats moored off the beach; a growing one sails in from the right
+    const boats = items.filter(x => x.k === "boat").slice(-3);
+    const drawBoatAt = (bx, s, a) => {
+      const by = cy + 4 * k + Math.sin(t * 0.9 + bx) * 0.8;
+      g.save(); g.globalAlpha = a; g.fillStyle = sil;
+      g.beginPath(); g.moveTo(bx - 11 * s, by - 2 * s); g.quadraticCurveTo(bx, by + 3 * s, bx + 11 * s, by - 3 * s); g.lineTo(bx + 8 * s, by); g.lineTo(bx - 8 * s, by); g.closePath(); g.fill();
+      g.fillRect(bx - 0.5 * s, by - 16 * s, 1.2 * s, 14 * s);
+      g.beginPath(); g.moveTo(bx + 0.8 * s, by - 15 * s); g.lineTo(bx + 8 * s, by - 4 * s); g.lineTo(bx + 0.8 * s, by - 4 * s); g.closePath(); g.fill();
+      g.restore(); lights.push([bx - 6 * s, by - 5 * s, 1.6 * s, 1.6 * s]);
+    };
+    boats.forEach((b, i) => drawBoatAt(cx - w * 0.95 - i * 26 * k, k, 1));
+    if (st.grow && st.grow.k === "boat") drawBoatAt(cx - w * 0.95 - boats.length * 26 * k + (1 - st.grow.p) * W * 0.35, k, Math.min(1, 0.3 + st.grow.p));
+    if (st.ms && st.ms.lanterns) for (let i = 0; i < 7; i++) { const x = cx - w * 0.6 + i * w * 0.2; lights.push([x, top(x) - 7 * k, 1.5 * k, 1.5 * k]); }
+    // warm lights after dusk
+    if (night > 0.25) {
+      const a = Math.min(1, (night - 0.25) / 0.5);
+      for (const [lx, ly, lw, lh] of lights) {
+        const fl = 0.85 + 0.15 * Math.sin(t * 5 + lx);
+        const rg = g.createRadialGradient(lx, ly, 0, lx, ly, 9 * k); rg.addColorStop(0, `rgba(255,200,120,${0.35 * a * fl})`); rg.addColorStop(1, "rgba(255,200,120,0)");
+        g.fillStyle = rg; g.fillRect(lx - 9 * k, ly - 9 * k, 18 * k, 18 * k);
+        g.fillStyle = `rgba(255,214,140,${0.95 * a * fl})`; g.fillRect(lx - lw / 2, ly - lh / 2, lw, lh);
+      }
+    }
+  }
+  /* The island on its own, for the panel and the share card: a slice of sea and sky in tonight's (or today's) light. */
+  function renderIsland(canvas, st, hourIn, zoom = 1) {
+    const ctx = canvas.getContext("2d"), cw = canvas.width, ch = canvas.height, now = new Date();
+    const hour = hourIn ?? hourOverride ?? now.getHours() + now.getMinutes() / 60, P = palette(hour);
+    const keep = [g, W, H]; g = ctx; W = cw; H = ch;
+    try {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const hz = ch * 0.5, sg = ctx.createLinearGradient(0, 0, 0, hz); sg.addColorStop(0, rgb(P.top)); sg.addColorStop(1, rgb(P.hor));
+      ctx.fillStyle = sg; ctx.fillRect(0, 0, cw, hz + 1);
+      if (P.night > 0.3) { ctx.fillStyle = "#fff"; const r = srng(11); for (let i = 0; i < 60; i++) { ctx.globalAlpha = P.night * (0.3 + 0.6 * r()); ctx.fillRect(r() * cw, r() * hz * 0.9, 1.2, 1.2); } ctx.globalAlpha = 1; }
+      for (let i = 0; i < 4; i++) {
+        const f = i / 3, y0 = hz + Math.pow(f, 1.7) * (ch - hz) * 0.92;
+        ctx.beginPath(); ctx.moveTo(0, ch); for (let x = 0; x <= cw; x += 6) ctx.lineTo(x, y0 + Math.sin(x * 0.02 / (0.4 + f) + t * 0.5 + i * 2) * (1 + f * 4)); ctx.lineTo(cw, ch); ctx.closePath();
+        ctx.fillStyle = rgb(mix(P.far, P.near, f)); ctx.fill();
+        if (i === 1) drawIsland(st, cw * 0.52, y0 + ch * (0.12 + (zoom - 1) * 0.08), ch / 170 * zoom, P, P.night, 0, 0.6);
+      }
+    } finally { [g, W, H] = keep; }
+  }
+
   function spawnFlock(far) {
     const narrow = W < 700, dir = R() < 0.5 ? 1 : -1, n = far ? 2 + ((R() * 4) | 0) : 3 + ((R() * 5) | 0);
     const s = (far ? rr(0.32, 0.5) : rr(0.6, 1.2)) * (narrow ? 1.5 : 1);
@@ -595,6 +700,8 @@ const Scene = (() => {
       else if (e.ev === "wind") windNow = e.v;
     },
     setHour(h) { hourOverride = h; },
+    setIsland(st) { island = st; if (reduce) draw(0); },
+    renderIsland,
     setClock(spec) { clockSpec = spec; if (reduce) draw(0); },
     clockRect() { return clockRect; },
     onClockRect(f) { rectCb = f; },

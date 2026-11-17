@@ -76,6 +76,7 @@
     $$(".panel").forEach(p => (p.hidden = p.id !== "p-" + name));
     $$("[data-panel]").forEach(b => b.setAttribute("aria-expanded", b.dataset.panel === name));
     if (name === "mixes") renderMixes();
+    Journey.onPanel(name);
     if (name) unZen(); else armZen();
   }
   $$("[data-panel]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.panel)));
@@ -430,24 +431,28 @@
     focusBtn.textContent = t(F.running ? "pause" : F.remaining < TT ? "resume" : F.mode === "focus" ? "start" : "startBreak");
     resetBtn.hidden = !(F.running || F.remaining < TT || F.mode !== "focus");
     $$("#dots i").forEach((d, i) => d.classList.toggle("done", i < F.done));
+    if (F.mode === "focus" && (F.running || F.remaining < TT)) Journey.progress(1 - F.remaining / TT, T.focus);
+    document.body.classList.toggle("breathing", F.running && F.mode !== "focus");
     document.title = F.running ? `${fmt(F.remaining)} · ${F.mode === "focus" ? intent.value || t("focus") : t("break")}` : t("title");
   }
   let wake = null;
   const lockWake = async on => { try { if (on && "wakeLock" in navigator && !wake) wake = await navigator.wakeLock.request("screen"); else if (!on && wake) { await wake.release(); wake = null; } } catch {} };
   function startTimer() {
+    if (F.mode === "focus") Journey.begin(T.focus);
+    Journey.setRunning(F.mode === "focus");
     F.running = true; F.endAt = Date.now() + F.remaining * 1000;
     clearInterval(F.iv); F.iv = setInterval(tick, 250);
     if (F.mode === "focus" && !playing && !quranActive() && started) setPlaying(true);
     lockWake(true); paint(); armZen();
   }
-  function pauseTimer() { F.running = false; clearInterval(F.iv); F.remaining = Math.max(0, Math.round((F.endAt - Date.now()) / 1000)); lockWake(false); paint(); unZen(); }
+  function pauseTimer() { F.running = false; Journey.setRunning(false); clearInterval(F.iv); F.remaining = Math.max(0, Math.round((F.endAt - Date.now()) / 1000)); lockWake(false); paint(); unZen(); }
   function tick() { F.remaining = Math.max(0, Math.round((F.endAt - Date.now()) / 1000)); if (F.remaining === 0) complete(); else paint(); }
   function complete() {
     clearInterval(F.iv); F.running = false; Audio_.chime(); unZen();
     if (F.mode === "focus") {
       logMinutes(T.focus); F.done++;
       const long = F.done >= 4; F.mode = long ? "long" : "break"; F.remaining = total();
-      toast(t(long ? "doneLong" : "done")); notify(t("nDone"), t("nDoneB"));
+      Journey.complete(T.focus, intent.value); notify(t("nDone"), t("nDoneB"));
       if (long) F.done = 0; store.set("cycle", F.done);
       if (T.auto) startTimer(); else { lockWake(false); paint(); }
     } else {
@@ -460,7 +465,7 @@
     if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {});
     F.running ? pauseTimer() : startTimer();
   });
-  resetBtn.addEventListener("click", () => { if (CM === "stopwatch") return swReset(); clearInterval(F.iv); F.running = false; F.mode = "focus"; F.remaining = total(); lockWake(false); unZen(); paint(); });
+  resetBtn.addEventListener("click", () => { if (CM === "stopwatch") return swReset(); Journey.cancel(); clearInterval(F.iv); F.running = false; F.mode = "focus"; F.remaining = total(); lockWake(false); unZen(); paint(); });
   function notify(title, body) { if (document.hidden && "Notification" in window && Notification.permission === "granted") try { new Notification(title, { body, icon: "brand/fw-icon-192.png", silent: true }); } catch {} }
 
   /* ---- clock modes: timer, stopwatch, clock ---- */
@@ -636,6 +641,7 @@
 
   /* ---- stats (only in this browser) ---- */
   const dayKey = (d = new Date()) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  $("#stats").addEventListener("click", () => openPanel("island"));
   function logMinutes(m) { const log = store.get("log", {}); log[dayKey()] = (log[dayKey()] || 0) + m; store.set("log", log); paintStats(); }
   function paintStats() {
     const log = store.get("log", {}), today = log[dayKey()] || 0;
@@ -742,11 +748,12 @@
     else if (e.key === "m") openPanel("mixes");
     else if (e.key === "s") openPanel("sounds");
     else if (e.key === "t" || e.key === "c") openPanel("clock");
+    else if (e.key === "i") openPanel("island");
   });
 
   function relabel() {
     applyI18n(); buildSounds(); buildFaces(); OPTS.forEach(o => buildOpts(...o)); if (openName === "mixes") renderMixes();
-    paintDockMix(); paint(); paintStats(); sharedNote(); applyQuranOut(); paintSky(); paintOp(); introWarn(); if (!started && typeof buildPicks === "function") { greet(); buildPicks(); }
+    paintDockMix(); paint(); paintStats(); Journey.relabel(); sharedNote(); applyQuranOut(); paintSky(); paintOp(); introWarn(); if (!started && typeof buildPicks === "function") { greet(); buildPicks(); }
     $("#playBtn").setAttribute("aria-label", t(playing ? "pauseSounds" : "play"));
   }
   function setLang() { LANG = LANG === "en" ? "bn" : "en"; try { localStorage.setItem("fw:lang", LANG); } catch {} relabel(); }
@@ -826,6 +833,7 @@
   else if (saved && Object.keys(saved).length) applyMix(saved, store.get("activeMix", null), false);
   else applyMix(MIXES[0].mix, MIXES[0].id, false);
   if (cur && !cur.getAttribute("src")) { attempts = quranSources(RECITERS[+recSel.value], +surahSel.value).flatMap(url => [{ url, el: qA }, { url, el: qB }]); attemptIdx = 0; }
+  Journey.init({ openModal, toast, copy: copyText, openPanel });
   F.remaining = total(); applyFace(); paintMode(); paint(); greet(); buildPicks();
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js");
 })();
