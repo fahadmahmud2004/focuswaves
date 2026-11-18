@@ -1,0 +1,258 @@
+{
+  "name": "focuswaves",
+  "displayName": "Focus Waves: Focus Timer and Live Nature Sounds for Coding",
+  "description": "Stay in flow while you code. A focus timer in the status bar and calm sounds made live while you listen: sea waves, rain, a fan, lofi, brown noise and a gentle focus pulse. Nothing loops.",
+  "version": "1.0.0",
+  "publisher": "fahadmahmud2004",
+  "author": {
+    "name": "Fahad Mahmud",
+    "url": "https://fahadmahmud.com"
+  },
+  "license": "SEE LICENSE IN LICENSE.md",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0B1520",
+    "theme": "dark"
+  },
+  "homepage": "https://focus.freakingwaves.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fahadmahmud2004/focuswaves.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fahadmahmud2004/focuswaves/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Education"
+  ],
+  "keywords": [
+    "focus",
+    "pomodoro",
+    "timer",
+    "white noise",
+    "brown noise",
+    "rain sounds",
+    "lofi",
+    "ambient",
+    "productivity",
+    "deep work"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./src/extension.js",
+  "scripts": {
+    "vscode:prepublish": "node scripts/sync-engine.js"
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "focuswaves",
+          "title": "Focus Waves",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "focuswaves": [
+        {
+          "type": "webview",
+          "id": "focuswaves.panel",
+          "name": "Focus",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "focuswaves.openRoom",
+        "title": "Open Focus Room",
+        "category": "Focus Waves",
+        "icon": "$(screen-full)"
+      },
+      {
+        "command": "focuswaves.startFocus",
+        "title": "Start Focus Session",
+        "category": "Focus Waves",
+        "icon": "$(play)"
+      },
+      {
+        "command": "focuswaves.toggleTimer",
+        "title": "Pause or Resume Timer",
+        "category": "Focus Waves",
+        "icon": "$(debug-pause)"
+      },
+      {
+        "command": "focuswaves.resetTimer",
+        "title": "Reset Timer",
+        "category": "Focus Waves",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "focuswaves.skip",
+        "title": "Skip to Next (Focus or Break)",
+        "category": "Focus Waves",
+        "icon": "$(debug-step-over)"
+      },
+      {
+        "command": "focuswaves.startBreak",
+        "title": "Start Short Break",
+        "category": "Focus Waves"
+      },
+      {
+        "command": "focuswaves.setTask",
+        "title": "Set What You Are Working On",
+        "category": "Focus Waves",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "focuswaves.toggleSound",
+        "title": "Play or Pause Sounds",
+        "category": "Focus Waves",
+        "icon": "$(unmute)"
+      },
+      {
+        "command": "focuswaves.pickMix",
+        "title": "Choose a Mix",
+        "category": "Focus Waves",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "focuswaves.volumeUp",
+        "title": "Volume Up",
+        "category": "Focus Waves"
+      },
+      {
+        "command": "focuswaves.volumeDown",
+        "title": "Volume Down",
+        "category": "Focus Waves"
+      },
+      {
+        "command": "focuswaves.showStats",
+        "title": "Show Focus Stats",
+        "category": "Focus Waves",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "focuswaves.open",
+        "title": "Open Focus Waves",
+        "category": "Focus Waves"
+      },
+      {
+        "command": "focuswaves.openWebsite",
+        "title": "Open the Full Focus Waves Website",
+        "category": "Focus Waves",
+        "icon": "$(globe)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "focuswaves.openRoom",
+          "when": "view == focuswaves.panel",
+          "group": "navigation@0"
+        },
+        {
+          "command": "focuswaves.pickMix",
+          "when": "view == focuswaves.panel",
+          "group": "navigation@1"
+        },
+        {
+          "command": "focuswaves.showStats",
+          "when": "view == focuswaves.panel",
+          "group": "navigation@2"
+        },
+        {
+          "command": "focuswaves.openWebsite",
+          "when": "view == focuswaves.panel",
+          "group": "navigation@3"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "focuswaves.toggleTimer",
+        "key": "ctrl+alt+f",
+        "mac": "cmd+alt+f"
+      },
+      {
+        "command": "focuswaves.toggleSound",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m"
+      }
+    ],
+    "configuration": {
+      "title": "Focus Waves",
+      "properties": {
+        "focuswaves.focusMinutes": {
+          "type": "number",
+          "default": 25,
+          "minimum": 1,
+          "maximum": 240,
+          "description": "Length of a focus session in minutes."
+        },
+        "focuswaves.shortBreakMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 60,
+          "description": "Length of a short break in minutes."
+        },
+        "focuswaves.longBreakMinutes": {
+          "type": "number",
+          "default": 15,
+          "minimum": 1,
+          "maximum": 120,
+          "description": "Length of a long break in minutes."
+        },
+        "focuswaves.longBreakEvery": {
+          "type": "number",
+          "default": 4,
+          "minimum": 2,
+          "maximum": 12,
+          "description": "Every how many focus sessions the break is a long one."
+        },
+        "focuswaves.autoStartBreaks": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start the break on its own when a focus session ends."
+        },
+        "focuswaves.autoStartFocus": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start the next focus session on its own when a break ends."
+        },
+        "focuswaves.soundWithFocus": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start your sounds when a focus session starts."
+        },
+        "focuswaves.chime": {
+          "type": "boolean",
+          "default": true,
+          "description": "Play a soft chime when a session or break ends."
+        },
+        "focuswaves.zenModeDuringFocus": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enter Zen Mode when a focus session starts and leave it when the session ends."
+        },
+        "focuswaves.quietNotificationsDuringFocus": {
+          "type": "boolean",
+          "default": false,
+          "description": "Turn on Do Not Disturb for notifications during focus sessions."
+        },
+        "focuswaves.showInStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the timer and sound controls in the status bar."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1520; color: #f6f2e7; }
+body { font: 14px/1.5 var(--vscode-font-family, system-ui, sans-serif); -webkit-font-smoothing: antialiased; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.vignette { position: fixed; inset: 0; pointer-events: none;
+  background: radial-gradient(55% 40% at 50% 40%, rgba(4,10,16,.18), transparent 72%), radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0,0,0,.38)); }
+.top { position: fixed; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; pointer-events: none; }
+.brand { font-family: "Instrument Serif", Georgia, serif; font-size: 20px; letter-spacing: .01em; opacity: .9; }
+.brand i { font-style: italic; }
+.mode { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgba(246,242,231,.72); }
+.task { position: fixed; left: 0; right: 0; top: 52px; text-align: center; font-family: "Instrument Serif", Georgia, serif; font-size: clamp(18px, 2.6vw, 30px); color: rgba(246,242,231,.86); padding: 0 24px; text-shadow: 0 2px 18px rgba(0,0,0,.35); }
+.dock { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; gap: 6px; align-items: center;
+  padding: 6px; border-radius: 999px; background: rgba(13,17,21,.55); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 40px rgba(0,0,0,.3); transition: opacity .6s; }
+body.idle .dock, body.idle .top { opacity: 0; }
+body.idle { cursor: none; }
+.dock button { border: 0; border-radius: 999px; background: transparent; color: #f6f2e7; padding: 8px 14px; font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.dock button:hover { background: rgba(246,242,231,.1); }
+.dock button.main { background: #f6f2e7; color: #15191d; font-weight: 600; }
+.dock .sep { width: 1px; height: 20px; background: rgba(246,242,231,.16); }
+.dock .now { color: rgba(246,242,231,.72); padding: 0 8px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.today { position: fixed; right: 22px; top: 18px; color: rgba(246,242,231,.6); font-size: 12px; }
+svg { flex: none; }
